@@ -1,0 +1,192 @@
+:host {
+  display: block;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: #1a1a2e;
+  min-height: 100dvh;
+  background: #f5f5fa;
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+header {
+  margin-bottom: 2rem;
+
+  h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0 0 0.25rem;
+  }
+
+  p {
+    color: #555;
+    margin: 0;
+  }
+}
+
+/* ── Input ── */
+
+.input-section {
+  margin-bottom: 1.5rem;
+
+  label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+    font-size: 0.9rem;
+  }
+}
+
+.input-row {
+  display: flex;
+  gap: 0.5rem;
+
+  input {
+    flex: 1;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    outline: none;
+    transition: border-color 0.2s;
+
+    &:focus {
+      border-color: #6c63ff;
+    }
+  }
+
+  button {
+    padding: 0.55rem 1.25rem;
+    background: #6c63ff;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+
+    &:hover:not(:disabled) {
+      background: #5a52d5;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+}
+
+/* ── Error ── */
+
+.error-banner {
+  background: #fff0f0;
+  border: 1px solid #ffcccc;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  color: #a00;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+/* ── Results ── */
+
+.results {
+  h2 {
+    font-size: 1.15rem;
+    margin: 1.5rem 0 0.5rem;
+    font-weight: 600;
+  }
+
+  .empty {
+    color: #888;
+    font-style: italic;
+  }
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: #fff;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+
+  th, td {
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #eee;
+  }
+
+  th {
+    background: #fafafe;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  tbody tr:hover {
+    background: #f7f7ff;
+  }
+}
+
+.mono {
+  font-family: 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 0.82rem;
+}
+
+.file-path {
+  color: #666;
+}
+
+/* ── Badges ── */
+
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+
+  &[data-type='class'] {
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+  &[data-type='function'] {
+    background: #e3f2fd;
+    color: #1565c0;
+  }
+  &[data-type='interface'] {
+    background: #fce4ec;
+    color: #c62828;
+  }
+  &[data-type='variable'] {
+    background: #fff3e0;
+    color: #e65100;
+  }
+  &[data-type='file'] {
+    background: #f3e5f5;
+    color: #6a1b9a;
+  }
+
+  &.relation {
+    background: #ede7f6;
+    color: #4527a0;
+  }
+}
+
