@@ -18,6 +18,18 @@ export class App {
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly viewMode = signal<'graph' | 'table'>('graph');
+  protected readonly tableFilter = signal('');
+
+  protected readonly presets = [
+    { label: 'Server Source', path: 'apps/server/src' },
+    { label: 'Shared Interfaces', path: 'packages/shared/src' },
+    { label: 'Client App', path: 'apps/client/src/app' },
+  ];
+
+  protected selectPreset(presetPath: string): void {
+    this.directoryPath.set(presetPath);
+    this.onSubmit();
+  }
 
   protected onSubmit(): void {
     const dirPath = this.directoryPath().trim();
@@ -37,5 +49,28 @@ export class App {
         this.loading.set(false);
       },
     });
+  }
+
+  protected filteredNodes(nodes: ICodeGraph['nodes']) {
+    const q = this.tableFilter().toLowerCase().trim();
+    if (!q) return nodes;
+    return nodes.filter(
+      (n) =>
+        n.name.toLowerCase().includes(q) ||
+        n.type.toLowerCase().includes(q) ||
+        n.filePath.toLowerCase().includes(q) ||
+        (n.fileRole && n.fileRole.toLowerCase().includes(q)),
+    );
+  }
+
+  protected filteredEdges(edges: ICodeGraph['edges']) {
+    const q = this.tableFilter().toLowerCase().trim();
+    if (!q) return edges;
+    return edges.filter(
+      (e) =>
+        e.source.toLowerCase().includes(q) ||
+        e.target.toLowerCase().includes(q) ||
+        e.relation.toLowerCase().includes(q),
+    );
   }
 }

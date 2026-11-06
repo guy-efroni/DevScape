@@ -1,44 +1,135 @@
-<div class="canvas-container">
-  <div class="canvas-toolbar">
-    <div class="legend">
-      <span class="legend-group-title">File Containers:</span>
-      <span class="legend-item"><span class="box-legend controller"></span> Controller</span>
-      <span class="legend-item"><span class="box-legend service"></span> Service</span>
-      <span class="legend-item"><span class="box-legend component"></span> Component</span>
-      <span class="legend-item"><span class="box-legend module"></span> Module</span>
-      <span class="legend-item"><span class="box-legend dto"></span> DTO</span>
-      <span class="legend-item"><span class="box-legend generic"></span> File</span>
-
-      <span class="divider-v"></span>
-
-      <span class="legend-group-title">Entities:</span>
-      <span class="legend-item"><span class="dot class"></span> Class</span>
-      <span class="legend-item"><span class="dot interface"></span> Interface</span>
-      <span class="legend-item"><span class="dot function"></span> Function</span>
-      <span class="legend-item"><span class="dot variable"></span> Variable</span>
-      <span class="legend-item"><span class="dot external"></span> External</span>
+<div class="canvas-wrapper">
+  <!-- Top Toolbar -->
+  <header class="floating-toolbar">
+    <!-- View Mode Switcher -->
+    <div class="mode-pill-group">
+      <button
+        type="button"
+        class="mode-btn"
+        [class.active]="viewFilter() === 'architecture'"
+        (click)="setViewFilter('architecture')"
+      >
+        🏛️ Architecture (Clean)
+      </button>
+      <button
+        type="button"
+        class="mode-btn"
+        [class.active]="viewFilter() === 'files-only'"
+        (click)="setViewFilter('files-only')"
+      >
+        📁 Files Only
+      </button>
+      <button
+        type="button"
+        class="mode-btn"
+        [class.active]="viewFilter() === 'all'"
+        (click)="setViewFilter('all')"
+      >
+        🔬 All Symbols
+      </button>
     </div>
-    <div class="toolbar-actions">
-      <button type="button" class="btn-tool" (click)="fitView()">🎯 Fit</button>
-      <button type="button" class="btn-tool" (click)="reRunLayout('cose')">🕸️ Force</button>
-      <button type="button" class="btn-tool" (click)="reRunLayout('breadthfirst')">🌳 Hierarchy</button>
-      <button type="button" class="btn-tool" (click)="reRunLayout('grid')">▦ Grid</button>
-    </div>
-  </div>
 
+    <!-- Layout Direction -->
+    <div class="layout-pill-group">
+      <button
+        type="button"
+        class="layout-btn"
+        [class.active]="activeLayout() === 'dagre-lr'"
+        (click)="setLayout('dagre-lr')"
+        title="Left to Right Layered Flow"
+      >
+        Horizontal (L ➔ R)
+      </button>
+      <button
+        type="button"
+        class="layout-btn"
+        [class.active]="activeLayout() === 'dagre-tb'"
+        (click)="setLayout('dagre-tb')"
+        title="Top to Bottom Flow"
+      >
+        Vertical (T ➔ B)
+      </button>
+      <button
+        type="button"
+        class="layout-btn"
+        [class.active]="activeLayout() === 'grid'"
+        (click)="setLayout('grid')"
+        title="Clean Grid"
+      >
+        ▦ Grid
+      </button>
+    </div>
+
+    <!-- Toggles & Search -->
+    <div class="toolbar-right">
+      <label class="toggle-checkbox" title="Show or hide external package imports like @nestjs/common">
+        <input
+          type="checkbox"
+          [checked]="showExternal()"
+          (change)="toggleExternal()"
+        />
+        <span>External pkgs</span>
+      </label>
+
+      <div class="search-wrap">
+        <input
+          type="text"
+          placeholder="Filter node..."
+          [ngModel]="searchTerm()"
+          (ngModelChange)="onSearchChange($event)"
+        />
+        @if (searchTerm()) {
+          <button type="button" class="btn-clear" (click)="onSearchChange('')">✕</button>
+        }
+      </div>
+
+      <button type="button" class="btn-tool" (click)="fitView()" title="Fit View">🎯 Fit</button>
+    </div>
+  </header>
+
+  <!-- Cytoscape Container -->
   <div #cyContainer class="cy-viewport"></div>
 
-  @if (selectedNode(); as node) {
-    <div class="node-details">
-      <h4>{{ node.label }}</h4>
-      <p><strong>Type:</strong> {{ node.type }}</p>
-      @if (node.fileRole) {
-        <p><strong>Role:</strong> <span class="role-badge">{{ node.fileRole }}</span></p>
-      }
-      @if (node.filePath) {
-        <p><strong>File:</strong> <code>{{ node.filePath }}</code></p>
-      }
+  <!-- Minimal Bottom Legend -->
+  <footer class="legend-bar">
+    <div class="legend-items">
+      <span class="legend-badge controller">Controller</span>
+      <span class="legend-badge service">Service</span>
+      <span class="legend-badge component">Component</span>
+      <span class="legend-badge module">Module</span>
+      <span class="legend-badge class">Class</span>
+      <span class="legend-badge interface">Interface</span>
     </div>
+    <span class="legend-hint">💡 Click any node or edge to inspect details</span>
+  </footer>
+
+  <!-- Node / Edge Inspector Drawer -->
+  @if (selectedElement(); as el) {
+    <aside class="inspector-card">
+      <div class="inspector-header">
+        <span class="pill-type" [attr.data-type]="el.type">{{ el.type }}</span>
+        @if (el.role) {
+          <span class="pill-role">{{ el.role }}</span>
+        }
+        <button type="button" class="btn-close" (click)="selectedElement.set(null)">✕</button>
+      </div>
+
+      <h3 class="inspector-name">{{ el.label }}</h3>
+
+      <div class="inspector-details">
+        @if (el.filePath) {
+          <div class="detail-item">
+            <span class="d-label">Location:</span>
+            <code class="d-val">{{ el.filePath }}</code>
+          </div>
+        }
+        @if (el.target) {
+          <div class="detail-item">
+            <span class="d-label">Target:</span>
+            <code class="d-val">{{ el.target }}</code>
+          </div>
+        }
+      </div>
+    </aside>
   }
 </div>
-

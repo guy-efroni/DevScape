@@ -19,6 +19,7 @@
     "@angular/router": "^22.2.0",
     "@devscape/shared": "file:../../packages/shared",
     "cytoscape": "^3.34.4",
+    "cytoscape-dagre": "^4.0.1",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },
@@ -27,6 +28,7 @@
     "@angular/cli": "^22.2.6",
     "@angular/compiler-cli": "^22.2.0",
     "@types/cytoscape": "^3.21.9",
+    "@types/cytoscape-dagre": "^2.3.4",
     "jsdom": "^30.0.0",
     "prettier": "^3.8.1",
     "typescript": "~6.0.2",
