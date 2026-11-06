@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { AstParserService } from './ast-parser.service.js';
 import { BadRequestException } from '@nestjs/common';
+import type { ICodeNode, IGraphEdge } from '@devscape/shared';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -57,39 +58,38 @@ describe('AstParserService', () => {
     const result = service.parseDirectory(tempDir);
 
     // Expect file node
-    const fileNode = result.nodes.find((n) => n.type === 'file');
+    const fileNode = result.nodes.find((n: ICodeNode) => n.type === 'file');
     expect(fileNode).toBeDefined();
     expect(fileNode?.name).toBe('user.service.ts');
 
     // Expect class node
-    const classNode = result.nodes.find((n) => n.name === 'UserService');
+    const classNode = result.nodes.find((n: ICodeNode) => n.name === 'UserService');
     expect(classNode).toBeDefined();
     expect(classNode?.type).toBe('class');
 
     // Expect interface node
-    const ifaceNode = result.nodes.find((n) => n.name === 'IUserService');
+    const ifaceNode = result.nodes.find((n: ICodeNode) => n.name === 'IUserService');
     expect(ifaceNode).toBeDefined();
     expect(ifaceNode?.type).toBe('interface');
 
     // Expect function node
-    const funcNode = result.nodes.find((n) => n.name === 'helper');
+    const funcNode = result.nodes.find((n: ICodeNode) => n.name === 'helper');
     expect(funcNode).toBeDefined();
     expect(funcNode?.type).toBe('function');
 
     // Expect variable node
-    const varNode = result.nodes.find((n) => n.name === 'DEFAULT_TIMEOUT');
+    const varNode = result.nodes.find((n: ICodeNode) => n.name === 'DEFAULT_TIMEOUT');
     expect(varNode).toBeDefined();
     expect(varNode?.type).toBe('variable');
 
     // Expect import edge
-    const importEdge = result.edges.find((e) => e.relation === 'imports');
+    const importEdge = result.edges.find((e: IGraphEdge) => e.relation === 'imports');
     expect(importEdge).toBeDefined();
     expect(importEdge?.target).toBe('@nestjs/common');
 
     // Expect implements/extends edge
-    const extendsEdge = result.edges.find((e) => e.relation === 'extends');
+    const extendsEdge = result.edges.find((e: IGraphEdge) => e.relation === 'extends');
     expect(extendsEdge).toBeDefined();
     expect(extendsEdge?.target).toBe('IUserService');
   });
 });
-
