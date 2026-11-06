@@ -1,15 +1,21 @@
 <main class="container">
   <header>
     <h1>🔬 DevScape — AST Explorer</h1>
-    <p>Parse a local TypeScript project directory into a code graph.</p>
+    <p>Parse a local TypeScript project directory into an interactive architecture code graph.</p>
   </header>
 
   <section class="input-section">
     <form (ngSubmit)="onSubmit()">
       <label for="dirPath">Project directory path</label>
       <div class="input-row">
-        <input id="dirPath" type="text" placeholder="e.g. C:\dev\my-project\src" [ngModel]="directoryPath()"
-          (ngModelChange)="directoryPath.set($event)" name="directoryPath" />
+        <input
+          id="dirPath"
+          type="text"
+          placeholder="e.g. C:\dev\DevScape\apps\server\src"
+          [ngModel]="directoryPath()"
+          (ngModelChange)="directoryPath.set($event)"
+          name="directoryPath"
+        />
         <button type="submit" [disabled]="loading()">
           {{ loading() ? 'Parsing…' : 'Parse' }}
         </button>
@@ -18,68 +24,96 @@
   </section>
 
   @if (error(); as err) {
-  <section class="error-banner">
-    ⚠️ {{ err }}
-  </section>
+    <section class="error-banner">
+      ⚠️ {{ err }}
+    </section>
   }
 
   @if (graph(); as g) {
-  <section class="results">
-    <h2>Nodes ({{ g.nodes.length }})</h2>
-    @if (g.nodes.length === 0) {
-    <p class="empty">No nodes found.</p>
-    } @else {
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>File</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (node of g.nodes; track node.id) {
-          <tr>
-            <td class="mono">{{ node.name }}</td>
-            <td>
-              <span class="badge" [attr.data-type]="node.type">{{ node.type }}</span>
-            </td>
-            <td class="mono file-path">{{ node.filePath }}</td>
-          </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-    }
+    <section class="results">
+      <div class="results-header">
+        <div class="stats">
+          <span class="stat-badge"><strong>{{ g.nodes.length }}</strong> Nodes</span>
+          <span class="stat-badge"><strong>{{ g.edges.length }}</strong> Edges</span>
+        </div>
 
-    <h2>Edges ({{ g.edges.length }})</h2>
-    @if (g.edges.length === 0) {
-    <p class="empty">No edges found.</p>
-    } @else {
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Source</th>
-            <th>Relation</th>
-            <th>Target</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (edge of g.edges; track $index) {
-          <tr>
-            <td class="mono">{{ edge.source }}</td>
-            <td>
-              <span class="badge relation">{{ edge.relation }}</span>
-            </td>
-            <td class="mono">{{ edge.target }}</td>
-          </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-    }
-  </section>
+        <div class="view-toggle">
+          <button
+            type="button"
+            [class.active]="viewMode() === 'graph'"
+            (click)="viewMode.set('graph')"
+          >
+            🗺️ Graph View
+          </button>
+          <button
+            type="button"
+            [class.active]="viewMode() === 'table'"
+            (click)="viewMode.set('table')"
+          >
+            📋 Table View
+          </button>
+        </div>
+      </div>
+
+      @if (viewMode() === 'graph') {
+        <app-graph-canvas [graph]="g" />
+      } @else {
+        <h2>Nodes ({{ g.nodes.length }})</h2>
+        @if (g.nodes.length === 0) {
+          <p class="empty">No nodes found.</p>
+        } @else {
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>File</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (node of g.nodes; track node.id) {
+                  <tr>
+                    <td class="mono">{{ node.name }}</td>
+                    <td>
+                      <span class="badge" [attr.data-type]="node.type">{{ node.type }}</span>
+                    </td>
+                    <td class="mono file-path">{{ node.filePath }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+
+        <h2>Edges ({{ g.edges.length }})</h2>
+        @if (g.edges.length === 0) {
+          <p class="empty">No edges found.</p>
+        } @else {
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th>Relation</th>
+                  <th>Target</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (edge of g.edges; track $index) {
+                  <tr>
+                    <td class="mono">{{ edge.source }}</td>
+                    <td>
+                      <span class="badge relation">{{ edge.relation }}</span>
+                    </td>
+                    <td class="mono">{{ edge.target }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      }
+    </section>
   }
 </main>

@@ -17,7 +17,7 @@ export class AstParserController {
       throw new BadRequestException('directoryPath is required and must be a non-empty string');
     }
 
-    return this.astParserService.parse(body.directoryPath);
+    return this.astParserService.parseDirectory(body.directoryPath);
   }
 }
 

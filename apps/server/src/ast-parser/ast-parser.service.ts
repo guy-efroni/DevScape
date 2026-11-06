@@ -10,7 +10,7 @@ export class AstParserService {
    * Parse all `.ts` files in the given directory (recursively) and
    * return an ICodeGraph of extracted nodes and edges.
    */
-  parse(directoryPath: string): ICodeGraph {
+  parseDirectory(directoryPath: string): ICodeGraph {
     const resolvedPath = path.resolve(directoryPath);
 
     if (!fs.existsSync(resolvedPath)) {
@@ -50,11 +50,29 @@ export class AstParserService {
         .relative(resolvedPath, normalizedSourcePath)
         .replace(/\\/g, '/');
 
+      // 1. Extract file-level node
+      nodes.push({
+        id: relativeFilePath,
+        name: path.basename(relativeFilePath),
+        type: 'file',
+        filePath: relativeFilePath,
+      });
+
+      // 2. Extract AST entity nodes (classes, interfaces, functions, variables)
       this.extractNodes(sourceFile, relativeFilePath, nodes);
+
+      // 3. Extract relationship edges (imports, extends, calls)
       this.extractEdges(sourceFile, relativeFilePath, edges);
     }
 
     return { nodes, edges };
+  }
+
+  /**
+   * Alias for parseDirectory to support both method names.
+   */
+  parse(directoryPath: string): ICodeGraph {
+    return this.parseDirectory(directoryPath);
   }
 
   // ──────────────────────────────────────────────
@@ -279,4 +297,3 @@ export class AstParserService {
     ts.forEachChild(sourceFile, visit);
   }
 }
-
