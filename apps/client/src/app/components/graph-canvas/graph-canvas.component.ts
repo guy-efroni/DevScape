@@ -14,161 +14,15 @@ import type { ICodeGraph } from '@devscape/shared';
 @Component({
   selector: 'app-graph-canvas',
   standalone: true,
-  template: `
-    <div class="canvas-container">
-      <div class="canvas-toolbar">
-        <div class="legend">
-          <span class="legend-item"><span class="dot file"></span> File</span>
-          <span class="legend-item"><span class="dot class"></span> Class</span>
-          <span class="legend-item"><span class="dot interface"></span> Interface</span>
-          <span class="legend-item"><span class="dot function"></span> Function</span>
-          <span class="legend-item"><span class="dot variable"></span> Variable</span>
-          <span class="legend-item"><span class="dot external"></span> External / Module</span>
-        </div>
-        <div class="toolbar-actions">
-          <button type="button" class="btn-tool" (click)="fitView()">🎯 Fit</button>
-          <button type="button" class="btn-tool" (click)="reRunLayout('cose')">🕸️ Force</button>
-          <button type="button" class="btn-tool" (click)="reRunLayout('breadthfirst')">🌳 Tree</button>
-          <button type="button" class="btn-tool" (click)="reRunLayout('circle')">⭕ Circle</button>
-        </div>
-      </div>
-
-      <div #cyContainer class="cy-viewport"></div>
-
-      @if (selectedNode(); as node) {
-        <div class="node-details">
-          <h4>{{ node.label }}</h4>
-          <p><strong>Type:</strong> {{ node.type }}</p>
-          @if (node.filePath) {
-            <p><strong>File:</strong> <code>{{ node.filePath }}</code></p>
-          }
-        </div>
-      }
-    </div>
-  `,
-  styles: [`
-    .canvas-container {
-      position: relative;
-      width: 100%;
-      height: 600px;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      overflow: hidden;
-      background: #ffffff;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-      margin-top: 1rem;
-    }
-
-    .canvas-toolbar {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      right: 10px;
-      z-index: 10;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px;
-      background: rgba(255, 255, 255, 0.92);
-      backdrop-filter: blur(4px);
-      padding: 8px 12px;
-      border-radius: 6px;
-      border: 1px solid #e2e8f0;
-      font-size: 0.82rem;
-    }
-
-    .legend {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-
-    .legend-item {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-weight: 500;
-      color: #475569;
-    }
-
-    .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      display: inline-block;
-    }
-    .dot.file { background: #8b5cf6; }
-    .dot.class { background: #10b981; }
-    .dot.interface { background: #ec4899; }
-    .dot.function { background: #3b82f6; }
-    .dot.variable { background: #f59e0b; }
-    .dot.external { background: #94a3b8; }
-
-    .toolbar-actions {
-      display: flex;
-      gap: 6px;
-    }
-
-    .btn-tool {
-      background: #f1f5f9;
-      border: 1px solid #cbd5e1;
-      border-radius: 4px;
-      padding: 4px 8px;
-      font-size: 0.78rem;
-      cursor: pointer;
-      font-weight: 600;
-      color: #334155;
-      transition: background 0.15s;
-
-      &:hover {
-        background: #e2e8f0;
-      }
-    }
-
-    .cy-viewport {
-      width: 100%;
-      height: 100%;
-    }
-
-    .node-details {
-      position: absolute;
-      bottom: 12px;
-      right: 12px;
-      z-index: 10;
-      background: rgba(255, 255, 255, 0.96);
-      backdrop-filter: blur(4px);
-      padding: 10px 14px;
-      border-radius: 6px;
-      border: 1px solid #cbd5e1;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
-      max-width: 320px;
-      font-size: 0.85rem;
-
-      h4 {
-        margin: 0 0 4px;
-        font-size: 0.95rem;
-        color: #1e293b;
-      }
-      p {
-        margin: 2px 0;
-        color: #475569;
-      }
-      code {
-        font-size: 0.8rem;
-        background: #f1f5f9;
-        padding: 2px 4px;
-        border-radius: 3px;
-      }
-    }
-  `],
+  templateUrl: './graph-canvas.component.html',
+  styleUrl: './graph-canvas.component.scss',
 })
 export class GraphCanvasComponent implements OnChanges, OnDestroy {
   @Input({ required: true }) graph!: ICodeGraph;
   @ViewChild('cyContainer', { static: true }) cyContainer!: ElementRef<HTMLDivElement>;
 
   private cy: Core | null = null;
-  protected selectedNode = signal<{ label: string; type: string; filePath?: string } | null>(null);
+  protected selectedNode = signal<{ label: string; type: string; fileRole?: string; filePath?: string } | null>(null);
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['graph'] && this.graph) {
@@ -184,7 +38,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
   }
 
   fitView(): void {
-    this.cy?.fit(undefined, 30);
+    this.cy?.fit(undefined, 35);
   }
 
   reRunLayout(name: string): void {
@@ -193,6 +47,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       name,
       animate: true,
       animationDuration: 500,
+      padding: 40,
     } as any);
     layout.run();
   }
@@ -206,24 +61,43 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
     const elements: ElementDefinition[] = [];
     const nodeIds = new Set<string>();
 
-    // 1. Add explicitly parsed nodes
+    // 1. Add file parent nodes first
     for (const node of this.graph.nodes) {
-      nodeIds.add(node.id);
-      elements.push({
-        group: 'nodes',
-        data: {
-          id: node.id,
-          label: node.name,
-          type: node.type,
-          filePath: node.filePath,
-        },
-      });
+      if (node.type === 'file') {
+        nodeIds.add(node.id);
+        elements.push({
+          group: 'nodes',
+          data: {
+            id: node.id,
+            label: `📄 ${node.name}`,
+            type: 'file',
+            fileRole: node.fileRole ?? 'generic',
+            filePath: node.filePath,
+          },
+        });
+      }
     }
 
-    // 2. Add edges, creating placeholder nodes for any external imports or targets not in nodeIds
+    // 2. Add child symbol nodes (classes, interfaces, functions, variables)
+    for (const node of this.graph.nodes) {
+      if (node.type !== 'file') {
+        nodeIds.add(node.id);
+        elements.push({
+          group: 'nodes',
+          data: {
+            id: node.id,
+            label: node.name,
+            type: node.type,
+            filePath: node.filePath,
+            parent: node.parent && nodeIds.has(node.parent) ? node.parent : undefined,
+          },
+        });
+      }
+    }
+
+    // 3. Add edges, creating external placeholder nodes for external modules
     let edgeCounter = 0;
     for (const edge of this.graph.edges) {
-      // Ensure source node exists
       if (!nodeIds.has(edge.source)) {
         nodeIds.add(edge.source);
         elements.push({
@@ -236,7 +110,6 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
         });
       }
 
-      // Ensure target node exists
       if (!nodeIds.has(edge.target)) {
         nodeIds.add(edge.target);
         elements.push({
@@ -264,6 +137,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       container: this.cyContainer.nativeElement,
       elements,
       style: [
+        // Default base node
         {
           selector: 'node',
           style: {
@@ -274,28 +148,77 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
             'text-valign': 'bottom',
             'text-margin-y': 4,
             'background-color': '#94a3b8',
-            'width': 28,
-            'height': 28,
+            'width': 26,
+            'height': 26,
             'border-width': 2,
             'border-color': '#ffffff',
           },
         },
+        // Compound Parent Container (File) Styling
         {
-          selector: 'node[type = "file"]',
+          selector: ':parent',
           style: {
-            'background-color': '#8b5cf6',
-            'shape': 'round-rectangle',
-            'width': 34,
-            'height': 34,
+            'text-valign': 'top',
+            'text-halign': 'center',
+            'text-margin-y': -8,
+            'font-size': '12px',
+            'font-weight': 'bold',
+            'color': '#334155',
+            'background-color': 'rgba(241, 245, 249, 0.6)',
+            'border-width': 1.5,
+            'border-style': 'dashed',
+            'border-color': '#94a3b8',
+            'padding': '18px',
           },
         },
+        {
+          selector: ':parent[fileRole = "controller"]',
+          style: {
+            'background-color': 'rgba(124, 58, 237, 0.05)',
+            'border-color': '#7c3aed',
+            'color': '#6d28d9',
+          },
+        },
+        {
+          selector: ':parent[fileRole = "service"]',
+          style: {
+            'background-color': 'rgba(6, 182, 212, 0.05)',
+            'border-color': '#06b6d4',
+            'color': '#0e7490',
+          },
+        },
+        {
+          selector: ':parent[fileRole = "component"]',
+          style: {
+            'background-color': 'rgba(79, 70, 229, 0.05)',
+            'border-color': '#4f46e5',
+            'color': '#4338ca',
+          },
+        },
+        {
+          selector: ':parent[fileRole = "module"]',
+          style: {
+            'background-color': 'rgba(99, 102, 241, 0.05)',
+            'border-color': '#6366f1',
+            'color': '#4f46e5',
+          },
+        },
+        {
+          selector: ':parent[fileRole = "dto"]',
+          style: {
+            'background-color': 'rgba(217, 119, 6, 0.05)',
+            'border-color': '#d97706',
+            'color': '#b45309',
+          },
+        },
+        // Child Symbol styling
         {
           selector: 'node[type = "class"]',
           style: {
             'background-color': '#10b981',
             'shape': 'ellipse',
-            'width': 30,
-            'height': 30,
+            'width': 28,
+            'height': 28,
           },
         },
         {
@@ -303,8 +226,8 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           style: {
             'background-color': '#ec4899',
             'shape': 'diamond',
-            'width': 30,
-            'height': 30,
+            'width': 28,
+            'height': 28,
           },
         },
         {
@@ -312,25 +235,25 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           style: {
             'background-color': '#3b82f6',
             'shape': 'ellipse',
-            'width': 26,
-            'height': 26,
+            'width': 24,
+            'height': 24,
           },
         },
         {
           selector: 'node[type = "variable"]',
           style: {
             'background-color': '#f59e0b',
-            'shape': 'rectangle',
-            'width': 24,
-            'height': 24,
+            'shape': 'round-rectangle',
+            'width': 22,
+            'height': 22,
           },
         },
         {
           selector: 'node[type = "external"]',
           style: {
             'background-color': '#cbd5e1',
-            'shape': 'ellipse',
-            'opacity': 0.8,
+            'shape': 'round-rectangle',
+            'opacity': 0.85,
             'width': 22,
             'height': 22,
           },
@@ -343,6 +266,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
             'border-opacity': 1,
           },
         },
+        // Edge styling
         {
           selector: 'edge',
           style: {
@@ -388,6 +312,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       this.selectedNode.set({
         label: nodeData.label,
         type: nodeData.type,
+        fileRole: nodeData.fileRole,
         filePath: nodeData.filePath,
       });
     });
@@ -399,4 +324,3 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
     });
   }
 }
-

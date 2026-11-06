@@ -1,0 +1,44 @@
+<div class="canvas-container">
+  <div class="canvas-toolbar">
+    <div class="legend">
+      <span class="legend-group-title">File Containers:</span>
+      <span class="legend-item"><span class="box-legend controller"></span> Controller</span>
+      <span class="legend-item"><span class="box-legend service"></span> Service</span>
+      <span class="legend-item"><span class="box-legend component"></span> Component</span>
+      <span class="legend-item"><span class="box-legend module"></span> Module</span>
+      <span class="legend-item"><span class="box-legend dto"></span> DTO</span>
+      <span class="legend-item"><span class="box-legend generic"></span> File</span>
+
+      <span class="divider-v"></span>
+
+      <span class="legend-group-title">Entities:</span>
+      <span class="legend-item"><span class="dot class"></span> Class</span>
+      <span class="legend-item"><span class="dot interface"></span> Interface</span>
+      <span class="legend-item"><span class="dot function"></span> Function</span>
+      <span class="legend-item"><span class="dot variable"></span> Variable</span>
+      <span class="legend-item"><span class="dot external"></span> External</span>
+    </div>
+    <div class="toolbar-actions">
+      <button type="button" class="btn-tool" (click)="fitView()">🎯 Fit</button>
+      <button type="button" class="btn-tool" (click)="reRunLayout('cose')">🕸️ Force</button>
+      <button type="button" class="btn-tool" (click)="reRunLayout('breadthfirst')">🌳 Hierarchy</button>
+      <button type="button" class="btn-tool" (click)="reRunLayout('grid')">▦ Grid</button>
+    </div>
+  </div>
+
+  <div #cyContainer class="cy-viewport"></div>
+
+  @if (selectedNode(); as node) {
+    <div class="node-details">
+      <h4>{{ node.label }}</h4>
+      <p><strong>Type:</strong> {{ node.type }}</p>
+      @if (node.fileRole) {
+        <p><strong>Role:</strong> <span class="role-badge">{{ node.fileRole }}</span></p>
+      }
+      @if (node.filePath) {
+        <p><strong>File:</strong> <code>{{ node.filePath }}</code></p>
+      }
+    </div>
+  }
+</div>
+

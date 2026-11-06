@@ -61,11 +61,13 @@ describe('AstParserService', () => {
     const fileNode = result.nodes.find((n: ICodeNode) => n.type === 'file');
     expect(fileNode).toBeDefined();
     expect(fileNode?.name).toBe('user.service.ts');
+    expect(fileNode?.fileRole).toBe('service');
 
     // Expect class node
     const classNode = result.nodes.find((n: ICodeNode) => n.name === 'UserService');
     expect(classNode).toBeDefined();
     expect(classNode?.type).toBe('class');
+    expect(classNode?.parent).toBe('user.service.ts');
 
     // Expect interface node
     const ifaceNode = result.nodes.find((n: ICodeNode) => n.name === 'IUserService');

@@ -24,9 +24,7 @@ DevScape/
 ### `apps/client` — Angular Frontend
 - Angular 22 standalone application
 - Calls the backend `POST /api/parse` endpoint
-- Interactive Cytoscape.js canvas with force-directed (`cose`), hierarchical (`breadthfirst`), and circle layouts
-- Dual view toggle: Visual Graph Canvas and Structured Table View
-- Entity inspector showing node details, file paths, and color-coded badges
+- Displays the resulting code graph in a structured table UI
 - SCSS styling, Vitest for unit tests
 
 ### `apps/server` — NestJS Backend
@@ -116,9 +114,8 @@ Parse a local TypeScript project directory into a code graph.
 - [x] AST parser service using TypeScript Compiler API
 - [x] `POST /api/parse` endpoint with CORS
 - [x] Angular UI shell with path input and results table
-- [x] Interactive node-graph visualization (Cytoscape.js with force-directed, tree, and circle layouts)
-- [x] File-level node type support
-- [x] Dual view mode: Interactive Graph Canvas & Structured Table View
+- [ ] Interactive node-graph visualization (D3 / Cytoscape)
+- [ ] File-level node type support
 - [ ] Caching / incremental parsing
 - [ ] Authentication & workspace management
 
