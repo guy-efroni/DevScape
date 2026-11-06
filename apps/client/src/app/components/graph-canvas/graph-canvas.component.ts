@@ -106,7 +106,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
         name: 'dagre',
         rankDir: 'LR',
         nodeSep: 60,
-        rankSep: 90,
+        rankSep: 100,
         animate: true,
         animationDuration: 500,
         padding: 50,
@@ -116,7 +116,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
         name: 'dagre',
         rankDir: 'TB',
         nodeSep: 60,
-        rankSep: 90,
+        rankSep: 100,
         animate: true,
         animationDuration: 500,
         padding: 50,
@@ -145,16 +145,26 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
     const filter = this.viewFilter();
     const includeExternal = this.showExternal();
 
+    // Build comprehensive lookup indexes from the entire raw graph
+    const nodeById = new Map<string, ICodeNode>();
+    const nodeByName = new Map<string, ICodeNode>();
+    const nodeByNormPath = new Map<string, ICodeNode>();
+
+    for (const node of this.graph.nodes) {
+      nodeById.set(node.id, node);
+      nodeByName.set(node.name, node);
+      const norm = node.filePath.replace(/\.(js|mjs|ts)$/, '').toLowerCase();
+      nodeByNormPath.set(norm, node);
+    }
+
     // 1. Filter Nodes based on selected view mode
     const filteredNodes = this.graph.nodes.filter((node) => {
       if (filter === 'files-only') {
         return node.type === 'file';
       }
       if (filter === 'architecture') {
-        // High-level: Only Files, Classes, and Interfaces. Filter out variables and minor functions.
         return node.type === 'file' || node.type === 'class' || node.type === 'interface';
       }
-      // 'all': Show everything
       return true;
     });
 
@@ -164,7 +174,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
         group: 'nodes',
         data: {
           id: node.id,
-          label: node.type === 'file' ? `📁 ${node.name}` : node.name,
+          label: node.type === 'file' ? `📄 ${node.name}` : node.name,
           type: node.type,
           fileRole: node.fileRole,
           filePath: node.filePath,
@@ -172,28 +182,65 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       });
     }
 
+    // Helper to resolve an edge endpoint to a currently visible node ID
+    const resolveToVisibleNodeId = (rawEndpoint: string): string | null => {
+      // Direct match
+      if (allowedNodeIds.has(rawEndpoint)) return rawEndpoint;
+
+      // Match by exact node ID in full graph -> check if its parent file is visible
+      const node = nodeById.get(rawEndpoint);
+      if (node && node.parent && allowedNodeIds.has(node.parent)) {
+        return node.parent;
+      }
+
+      // Match by symbol name
+      const byName = nodeByName.get(rawEndpoint);
+      if (byName) {
+        if (allowedNodeIds.has(byName.id)) return byName.id;
+        if (byName.parent && allowedNodeIds.has(byName.parent)) return byName.parent;
+      }
+
+      // Match by normalized file path (e.g. `./app.service.js` or `app.service`)
+      const cleaned = rawEndpoint.replace(/^(\.\/|\.\.\/)+/, '').replace(/\.(js|mjs|ts)$/, '').toLowerCase();
+      const byNorm = nodeByNormPath.get(cleaned);
+      if (byNorm && allowedNodeIds.has(byNorm.id)) {
+        return byNorm.id;
+      }
+
+      return null;
+    };
+
     // 2. Filter & Add Edges
     let edgeIndex = 0;
-    for (const edge of this.graph.edges) {
-      const sourceExists = allowedNodeIds.has(edge.source);
-      const targetExists = allowedNodeIds.has(edge.target);
+    const addedEdgeKeys = new Set<string>();
 
-      // If both endpoints exist in our filtered set, connect directly
-      if (sourceExists && targetExists) {
-        elements.push({
-          group: 'edges',
-          data: {
-            id: `edge-${edgeIndex++}`,
-            source: edge.source,
-            target: edge.target,
-            relation: edge.relation,
-          },
-        });
+    for (const edge of this.graph.edges) {
+      const resolvedSource = resolveToVisibleNodeId(edge.source);
+      const resolvedTarget = resolveToVisibleNodeId(edge.target);
+
+      // A. Both endpoints resolve to visible nodes in current view
+      if (resolvedSource && resolvedTarget) {
+        // Prevent self-loops unless desired
+        if (resolvedSource === resolvedTarget) continue;
+
+        const edgeKey = `${resolvedSource}->${resolvedTarget}:${edge.relation}`;
+        if (!addedEdgeKeys.has(edgeKey)) {
+          addedEdgeKeys.add(edgeKey);
+          elements.push({
+            group: 'edges',
+            data: {
+              id: `edge-${edgeIndex++}`,
+              source: resolvedSource,
+              target: resolvedTarget,
+              relation: edge.relation,
+            },
+          });
+        }
         continue;
       }
 
-      // If edge targets an external library and user has external toggled on:
-      if (includeExternal && sourceExists && !targetExists) {
+      // B. External library target (e.g. '@nestjs/common') when external toggle is ON
+      if (includeExternal && resolvedSource && !resolvedTarget) {
         if (!allowedNodeIds.has(edge.target)) {
           allowedNodeIds.add(edge.target);
           elements.push({
@@ -205,19 +252,24 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
             },
           });
         }
-        elements.push({
-          group: 'edges',
-          data: {
-            id: `edge-${edgeIndex++}`,
-            source: edge.source,
-            target: edge.target,
-            relation: edge.relation,
-          },
-        });
+
+        const edgeKey = `${resolvedSource}->${edge.target}:${edge.relation}`;
+        if (!addedEdgeKeys.has(edgeKey)) {
+          addedEdgeKeys.add(edgeKey);
+          elements.push({
+            group: 'edges',
+            data: {
+              id: `edge-${edgeIndex++}`,
+              source: resolvedSource,
+              target: edge.target,
+              relation: edge.relation,
+            },
+          });
+        }
       }
     }
 
-    // 3. Initialize Cytoscape with crisp, uncluttered styles
+    // 3. Initialize Cytoscape with visible relation arrows
     this.cy = cytoscape({
       container: this.cyContainer.nativeElement,
       elements,
@@ -227,7 +279,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           selector: 'node',
           style: {
             'label': 'data(label)',
-            'font-family': 'Inter, system-ui, sans-serif',
+            'font-family': 'Inter, system-ui, -apple-system, sans-serif',
             'font-size': '11px',
             'font-weight': 600,
             'color': '#0f172a',
@@ -240,7 +292,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
             'corner-radius': '6px',
             'width': 'label',
             'height': 34,
-            'padding': '10px',
+            'padding': '12px',
           },
         },
 
@@ -331,18 +383,25 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           },
         },
 
-        // ── Clean Uncluttered Edges ──
-        // NO text label by default!
+        // ── Visible, Clear Directed Edges ──
         {
           selector: 'edge',
           style: {
-            'width': 2,
-            'line-color': '#94a3b8',
-            'target-arrow-color': '#94a3b8',
+            'width': 2.5,
+            'line-color': '#64748b',
+            'target-arrow-color': '#64748b',
             'target-arrow-shape': 'triangle',
             'curve-style': 'bezier',
-            'arrow-scale': 0.8,
-            'opacity': 0.7,
+            'arrow-scale': 1.1,
+            'label': 'data(relation)',
+            'font-size': '10px',
+            'font-weight': 600,
+            'text-rotation': 'autorotate',
+            'text-margin-y': -8,
+            'color': '#475569',
+            'text-background-color': '#ffffff',
+            'text-background-opacity': 0.95,
+            'text-background-padding': '2px',
           },
         },
         {
@@ -350,6 +409,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           style: {
             'line-color': '#8b5cf6',
             'target-arrow-color': '#8b5cf6',
+            'color': '#7c3aed',
           },
         },
         {
@@ -358,6 +418,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
             'line-color': '#ec4899',
             'target-arrow-color': '#ec4899',
             'line-style': 'dashed',
+            'color': '#db2777',
           },
         },
         {
@@ -365,6 +426,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           style: {
             'line-color': '#0284c7',
             'target-arrow-color': '#0284c7',
+            'color': '#0369a1',
           },
         },
 
@@ -380,21 +442,14 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
         {
           selector: 'edge:selected',
           style: {
-            'width': 3,
-            'label': 'data(relation)',
-            'font-size': '10px',
-            'font-weight': 700,
-            'color': '#1e293b',
-            'text-background-color': '#ffffff',
-            'text-background-opacity': 0.9,
-            'text-background-padding': '3px',
+            'width': 3.5,
             'opacity': 1,
           },
         },
         {
           selector: 'node.dimmed, edge.dimmed',
           style: {
-            'opacity': 0.1,
+            'opacity': 0.12,
           },
         },
       ],

@@ -92,6 +92,6 @@ describe('AstParserService', () => {
     // Expect implements/extends edge
     const extendsEdge = result.edges.find((e: IGraphEdge) => e.relation === 'extends');
     expect(extendsEdge).toBeDefined();
-    expect(extendsEdge?.target).toBe('IUserService');
+    expect(extendsEdge?.target).toBe('user.service.ts::IUserService');
   });
 });

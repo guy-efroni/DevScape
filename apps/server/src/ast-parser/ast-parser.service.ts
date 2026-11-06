@@ -37,22 +37,31 @@ export class AstParserService {
       skipLibCheck: true,
     });
 
+    const sourceFiles = program.getSourceFiles().filter((sf) => {
+      if (sf.isDeclarationFile) return false;
+      const normalized = path.normalize(sf.fileName);
+      return normalized.startsWith(resolvedPath);
+    });
+
+    // Map of all known relative file paths in this project
+    const knownFiles = new Set(
+      sourceFiles.map((sf) =>
+        path.relative(resolvedPath, path.normalize(sf.fileName)).replace(/\\/g, '/'),
+      ),
+    );
+
     const nodes: ICodeNode[] = [];
     const edges: IGraphEdge[] = [];
 
-    for (const sourceFile of program.getSourceFiles()) {
-      // Skip declaration files and files outside the target directory
-      if (sourceFile.isDeclarationFile) continue;
-      const normalizedSourcePath = path.normalize(sourceFile.fileName);
-      if (!normalizedSourcePath.startsWith(resolvedPath)) continue;
-
+    // Pass 1: Extract all file nodes and AST entities (classes, interfaces, functions, variables)
+    for (const sourceFile of sourceFiles) {
       const relativeFilePath = path
-        .relative(resolvedPath, normalizedSourcePath)
+        .relative(resolvedPath, path.normalize(sourceFile.fileName))
         .replace(/\\/g, '/');
 
       const fileRole = this.detectFileRole(sourceFile, relativeFilePath);
 
-      // 1. Extract file-level node with specific architectural role
+      // 1. Extract file-level node
       nodes.push({
         id: relativeFilePath,
         name: path.basename(relativeFilePath),
@@ -61,11 +70,25 @@ export class AstParserService {
         fileRole,
       });
 
-      // 2. Extract AST entity nodes (classes, interfaces, functions, variables)
+      // 2. Extract AST entity nodes
       this.extractNodes(sourceFile, relativeFilePath, nodes);
+    }
 
-      // 3. Extract relationship edges (imports, extends, calls)
-      this.extractEdges(sourceFile, relativeFilePath, edges);
+    // Build symbol lookup map by name for cross-file and internal symbol resolution
+    const symbolMapByName = new Map<string, ICodeNode>();
+    for (const node of nodes) {
+      if (node.type !== 'file') {
+        symbolMapByName.set(node.name, node);
+      }
+    }
+
+    // Pass 2: Extract and resolve relationship edges
+    for (const sourceFile of sourceFiles) {
+      const relativeFilePath = path
+        .relative(resolvedPath, path.normalize(sourceFile.fileName))
+        .replace(/\\/g, '/');
+
+      this.extractEdges(sourceFile, relativeFilePath, edges, knownFiles, symbolMapByName);
     }
 
     return { nodes, edges };
@@ -137,7 +160,6 @@ export class AstParserService {
       const fullPath = path.join(dir, entry.name);
 
       if (entry.isDirectory()) {
-        // Skip node_modules, dist, and hidden directories
         if (
           entry.name === 'node_modules' ||
           entry.name === 'dist' ||
@@ -211,17 +233,43 @@ export class AstParserService {
   }
 
   // ──────────────────────────────────────────────
-  //  Edge extraction
+  //  Edge extraction with Path & Symbol Resolution
   // ──────────────────────────────────────────────
 
   private extractEdges(
     sourceFile: ts.SourceFile,
     relativeFilePath: string,
     edges: IGraphEdge[],
+    knownFiles: Set<string>,
+    symbolMapByName: Map<string, ICodeNode>,
   ): void {
-    this.extractImports(sourceFile, relativeFilePath, edges);
-    this.extractExtensions(sourceFile, relativeFilePath, edges);
-    this.extractCalls(sourceFile, relativeFilePath, edges);
+    this.extractImports(sourceFile, relativeFilePath, edges, knownFiles);
+    this.extractExtensions(sourceFile, relativeFilePath, edges, symbolMapByName);
+    this.extractCalls(sourceFile, relativeFilePath, edges, symbolMapByName);
+  }
+
+  /**
+   * Resolves relative import specifiers (e.g. `./app.service.js`) to the actual
+   * target file node ID (e.g. `app.service.ts`).
+   */
+  private resolveImportTarget(
+    relativeFilePath: string,
+    importSpecifier: string,
+    knownFiles: Set<string>,
+  ): string {
+    if (!importSpecifier.startsWith('.')) {
+      return importSpecifier; // External module like '@nestjs/common'
+    }
+
+    const dir = path.dirname(relativeFilePath);
+    let resolved = path.normalize(path.join(dir, importSpecifier)).replace(/\\/g, '/');
+    resolved = resolved.replace(/\.(js|mjs|ts)$/, '');
+
+    if (knownFiles.has(resolved + '.ts')) return resolved + '.ts';
+    if (knownFiles.has(resolved + '/index.ts')) return resolved + '/index.ts';
+    if (knownFiles.has(resolved)) return resolved;
+
+    return resolved + '.ts';
   }
 
   /** Extract import declarations → "imports" edges */
@@ -229,6 +277,7 @@ export class AstParserService {
     sourceFile: ts.SourceFile,
     relativeFilePath: string,
     edges: IGraphEdge[],
+    knownFiles: Set<string>,
   ): void {
     for (const stmt of sourceFile.statements) {
       if (!ts.isImportDeclaration(stmt)) continue;
@@ -236,33 +285,14 @@ export class AstParserService {
       const moduleSpecifier = stmt.moduleSpecifier;
       if (!ts.isStringLiteral(moduleSpecifier)) continue;
 
-      const importPath = moduleSpecifier.text;
+      const rawSpecifier = moduleSpecifier.text;
+      const target = this.resolveImportTarget(relativeFilePath, rawSpecifier, knownFiles);
 
-      // Collect named bindings
-      const namedBindings = stmt.importClause?.namedBindings;
-      if (namedBindings && ts.isNamedImports(namedBindings)) {
-        for (const element of namedBindings.elements) {
-          edges.push({
-            source: relativeFilePath,
-            target: importPath,
-            relation: 'imports',
-          });
-        }
-      } else if (stmt.importClause?.name) {
-        // Default import
-        edges.push({
-          source: relativeFilePath,
-          target: importPath,
-          relation: 'imports',
-        });
-      } else {
-        // Side-effect import  e.g. import './polyfill'
-        edges.push({
-          source: relativeFilePath,
-          target: importPath,
-          relation: 'imports',
-        });
-      }
+      edges.push({
+        source: relativeFilePath,
+        target,
+        relation: 'imports',
+      });
     }
   }
 
@@ -271,35 +301,24 @@ export class AstParserService {
     sourceFile: ts.SourceFile,
     relativeFilePath: string,
     edges: IGraphEdge[],
+    symbolMapByName: Map<string, ICodeNode>,
   ): void {
     const visit = (node: ts.Node) => {
-      if (ts.isClassDeclaration(node) && node.name) {
-        const className = node.name.text;
+      if ((ts.isClassDeclaration(node) || ts.isInterfaceDeclaration(node)) && node.name) {
+        const entityName = node.name.text;
+        const sourceId = `${relativeFilePath}::${entityName}`;
 
         if (node.heritageClauses) {
           for (const clause of node.heritageClauses) {
             for (const type of clause.types) {
               const baseTypeName = type.expression.getText(sourceFile);
-              edges.push({
-                source: `${relativeFilePath}::${className}`,
-                target: baseTypeName,
-                relation: 'extends',
-              });
-            }
-          }
-        }
-      }
+              // Resolve target: if symbol exists in our graph, link to its exact node ID
+              const matchingSymbol = symbolMapByName.get(baseTypeName);
+              const target = matchingSymbol ? matchingSymbol.id : baseTypeName;
 
-      if (ts.isInterfaceDeclaration(node) && node.name) {
-        const interfaceName = node.name.text;
-
-        if (node.heritageClauses) {
-          for (const clause of node.heritageClauses) {
-            for (const type of clause.types) {
-              const baseTypeName = type.expression.getText(sourceFile);
               edges.push({
-                source: `${relativeFilePath}::${interfaceName}`,
-                target: baseTypeName,
+                source: sourceId,
+                target,
                 relation: 'extends',
               });
             }
@@ -318,25 +337,20 @@ export class AstParserService {
     sourceFile: ts.SourceFile,
     relativeFilePath: string,
     edges: IGraphEdge[],
+    symbolMapByName: Map<string, ICodeNode>,
   ): void {
     const visit = (node: ts.Node) => {
       if (ts.isCallExpression(node)) {
         const callee = node.expression;
 
-        // Direct function call:  foo()
         if (ts.isIdentifier(callee)) {
-          edges.push({
-            source: relativeFilePath,
-            target: callee.text,
-            relation: 'calls',
-          });
-        }
+          const calleeName = callee.text;
+          const matchingSymbol = symbolMapByName.get(calleeName);
+          const target = matchingSymbol ? matchingSymbol.id : calleeName;
 
-        // Property access call:  obj.method()
-        if (ts.isPropertyAccessExpression(callee)) {
           edges.push({
             source: relativeFilePath,
-            target: callee.getText(sourceFile),
+            target,
             relation: 'calls',
           });
         }
