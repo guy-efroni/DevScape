@@ -11,5 +11,9 @@ export class CodeGraphService {
   parse(directoryPath: string): Observable<ICodeGraph> {
     return this.http.post<ICodeGraph>(this.apiUrl, { directoryPath });
   }
+
+  parseDirectory(directoryPath: string): Observable<ICodeGraph> {
+    return this.parse(directoryPath);
+  }
 }
 
