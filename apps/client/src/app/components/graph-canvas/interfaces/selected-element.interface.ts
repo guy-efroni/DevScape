@@ -1,4 +1,4 @@
-export interface SelectedElement {
+export interface ISelectedElement {
   type: string;
   label: string;
   role?: string;

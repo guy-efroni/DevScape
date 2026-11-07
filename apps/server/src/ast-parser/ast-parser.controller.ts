@@ -7,14 +7,14 @@ import {
 import { AstParserService } from './ast-parser.service.js';
 import { API_ROUTE_PREFIX } from '../app.constants.js';
 import { PARSE_ROUTE } from './ast-parser.constants.js';
-import type { ParseRequestDto } from './dto/parse-request.dto.js';
+import type { IParseRequestDto } from './dto/parse-request.dto.js';
 
 @Controller(API_ROUTE_PREFIX)
 export class AstParserController {
   constructor(private readonly astParserService: AstParserService) {}
 
   @Post(PARSE_ROUTE)
-  parse(@Body() body: ParseRequestDto) {
+  parse(@Body() body: IParseRequestDto) {
     if (!body.directoryPath || typeof body.directoryPath !== 'string') {
       throw new BadRequestException('directoryPath is required and must be a non-empty string');
     }
@@ -22,4 +22,3 @@ export class AstParserController {
     return this.astParserService.parseDirectory(body.directoryPath);
   }
 }
-

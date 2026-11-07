@@ -20,9 +20,9 @@ import {
   NodeType,
 } from '@devscape/shared';
 import type { ICodeGraph, ICodeNode } from '@devscape/shared';
-import type { EdgeElementData } from './interfaces/edge-element-data.interface';
-import type { NodeElementData } from './interfaces/node-element-data.interface';
-import type { SelectedElement } from './interfaces/selected-element.interface';
+import type { IEdgeElementData } from './interfaces/edge-element-data.interface';
+import type { INodeElementData } from './interfaces/node-element-data.interface';
+import type { ISelectedElement } from './interfaces/selected-element.interface';
 import { GraphColor } from './enums/graph-color.enum';
 import {
   CSS_CLASS,
@@ -72,8 +72,8 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
   public readonly ViewFilter = ViewFilter;
   public readonly LayoutDirection = LayoutDirection;
 
-  public readonly selectedElement: WritableSignal<SelectedElement | null> =
-    signal<SelectedElement | null>(null);
+  public readonly selectedElement: WritableSignal<ISelectedElement | null> =
+    signal<ISelectedElement | null>(null);
 
   public ngOnChanges(changes: SimpleChanges): void {
     if (changes['graph'] && this.graph) {
@@ -134,39 +134,43 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
   private _runLayout(): void {
     if (!this._cytoscapeInstance) return;
 
-    const selectedLayout: LayoutDirectionType = this.activeLayout();
-    let layoutOptions: GraphLayoutOptions;
+    this._cytoscapeInstance.layout(this._createLayoutOptions(this.activeLayout())).run();
+  }
+
+  private _createLayoutOptions(selectedLayout: LayoutDirectionType): GraphLayoutOptions {
+    const sharedLayoutOptions: Pick<
+      GraphLayoutOptions,
+      'animate' | 'animationDuration' | 'padding'
+    > = {
+      animate: true,
+      animationDuration: GRAPH_LAYOUT.AnimationDurationMilliseconds,
+      padding: GRAPH_LAYOUT.FitPadding,
+    };
 
     if (selectedLayout === LayoutDirection.DagreLeftToRight) {
-      layoutOptions = {
+      return {
+        ...sharedLayoutOptions,
         name: LayoutName.Dagre,
         rankDir: RankDirection.LeftToRight,
         nodeSep: GRAPH_LAYOUT.NodeSeparation,
         rankSep: GRAPH_LAYOUT.RankSeparation,
-        animate: true,
-        animationDuration: GRAPH_LAYOUT.AnimationDurationMilliseconds,
-        padding: GRAPH_LAYOUT.FitPadding,
       };
-    } else if (selectedLayout === LayoutDirection.DagreTopToBottom) {
-      layoutOptions = {
+    }
+
+    if (selectedLayout === LayoutDirection.DagreTopToBottom) {
+      return {
+        ...sharedLayoutOptions,
         name: LayoutName.Dagre,
         rankDir: RankDirection.TopToBottom,
         nodeSep: GRAPH_LAYOUT.NodeSeparation,
         rankSep: GRAPH_LAYOUT.RankSeparation,
-        animate: true,
-        animationDuration: GRAPH_LAYOUT.AnimationDurationMilliseconds,
-        padding: GRAPH_LAYOUT.FitPadding,
-      };
-    } else {
-      layoutOptions = {
-        name: LayoutName.Grid,
-        animate: true,
-        animationDuration: GRAPH_LAYOUT.AnimationDurationMilliseconds,
-        padding: GRAPH_LAYOUT.FitPadding,
       };
     }
 
-    this._cytoscapeInstance.layout(layoutOptions).run();
+    return {
+      ...sharedLayoutOptions,
+      name: LayoutName.Grid,
+    };
   }
 
   private _renderGraph(): void {
@@ -210,16 +214,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
 
     for (const node of filteredNodes) {
       allowedNodeIds.add(node.id);
-      elements.push({
-        group: 'nodes',
-        data: {
-          id: node.id,
-          label: node.type === NodeType.File ? `${FILE_LABEL_PREFIX}${node.name}` : node.name,
-          type: node.type,
-          fileRole: node.fileRole,
-          filePath: node.filePath,
-        },
-      });
+      elements.push(this._createNodeElement(node));
     }
 
     const resolveToVisibleNodeId: (rawEndpoint: string) => string | null = (
@@ -265,15 +260,14 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
         const edgeKey: string = `${resolvedSource}->${resolvedTarget}:${edge.relation}`;
         if (!addedEdgeKeys.has(edgeKey)) {
           addedEdgeKeys.add(edgeKey);
-          elements.push({
-            group: 'edges',
-            data: {
-              id: `edge-${edgeIndex++}`,
-              source: resolvedSource,
-              target: resolvedTarget,
-              relation: edge.relation,
-            },
-          });
+          elements.push(
+            this._createEdgeElement(
+              `edge-${edgeIndex++}`,
+              resolvedSource,
+              resolvedTarget,
+              edge.relation,
+            ),
+          );
         }
         continue;
       }
@@ -281,28 +275,20 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       if (includeExternal && resolvedSource && !resolvedTarget) {
         if (!allowedNodeIds.has(edge.target)) {
           allowedNodeIds.add(edge.target);
-          elements.push({
-            group: 'nodes',
-            data: {
-              id: edge.target,
-              label: edge.target,
-              type: EXTERNAL_NODE_TYPE,
-            },
-          });
+          elements.push(this._createExternalNodeElement(edge.target));
         }
 
         const edgeKey: string = `${resolvedSource}->${edge.target}:${edge.relation}`;
         if (!addedEdgeKeys.has(edgeKey)) {
           addedEdgeKeys.add(edgeKey);
-          elements.push({
-            group: 'edges',
-            data: {
-              id: `edge-${edgeIndex++}`,
-              source: resolvedSource,
-              target: edge.target,
-              relation: edge.relation,
-            },
-          });
+          elements.push(
+            this._createEdgeElement(
+              `edge-${edgeIndex++}`,
+              resolvedSource,
+              edge.target,
+              edge.relation,
+            ),
+          );
         }
       }
     }
@@ -490,7 +476,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
     this._runLayout();
 
     this._cytoscapeInstance.on('tap', SELECTOR.Node, (event: EventObject): void => {
-      const nodeData: NodeElementData = event.target.data() as NodeElementData;
+      const nodeData: INodeElementData = event.target.data() as INodeElementData;
       this.selectedElement.set({
         type: nodeData.type,
         label: nodeData.label,
@@ -500,7 +486,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
     });
 
     this._cytoscapeInstance.on('tap', SELECTOR.Edge, (event: EventObject): void => {
-      const edgeData: EdgeElementData = event.target.data() as EdgeElementData;
+      const edgeData: IEdgeElementData = event.target.data() as IEdgeElementData;
       this.selectedElement.set({
         type: RELATIONSHIP_ELEMENT_TYPE,
         label: `${edgeData.source}${EDGE_LABEL_SEPARATOR}${edgeData.target}`,
@@ -514,5 +500,46 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
         this.selectedElement.set(null);
       }
     });
+  }
+
+  private _createNodeElement(node: ICodeNode): ElementDefinition {
+    return {
+      group: 'nodes',
+      data: {
+        id: node.id,
+        label: node.type === NodeType.File ? `${FILE_LABEL_PREFIX}${node.name}` : node.name,
+        type: node.type,
+        fileRole: node.fileRole,
+        filePath: node.filePath,
+      },
+    };
+  }
+
+  private _createExternalNodeElement(packageName: string): ElementDefinition {
+    return {
+      group: 'nodes',
+      data: {
+        id: packageName,
+        label: packageName,
+        type: EXTERNAL_NODE_TYPE,
+      },
+    };
+  }
+
+  private _createEdgeElement(
+    edgeId: string,
+    sourceNodeId: string,
+    targetNodeId: string,
+    relation: EdgeRelation,
+  ): ElementDefinition {
+    return {
+      group: 'edges',
+      data: {
+        id: edgeId,
+        source: sourceNodeId,
+        target: targetNodeId,
+        relation,
+      },
+    };
   }
 }

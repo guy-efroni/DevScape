@@ -1,6 +1,6 @@
 import type { EdgeRelation } from '@devscape/shared';
 
-export interface EdgeElementData {
+export interface IEdgeElementData {
   id: string;
   source: string;
   target: string;
