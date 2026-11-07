@@ -62,7 +62,7 @@
                 <span class="ref-dir">{{ relation.direction }}</span>
                 <span class="ref-rel">{{ relation.relation }}</span>
               </div>
-              <pre class="code-box mono"><code>import {{ '{' }} {{ relation.connectedNode }} {{ '}' }} from '{{ relation.relation }}';</code></pre>
+              <pre class="code-box mono"><code>{{ referenceLine(relation) }}</code></pre>
             </div>
           }
         } @else {

@@ -5,4 +5,6 @@ export interface ISelectedRelation {
   relation: EdgeRelation;
   direction: RelationDirection;
   connectedNode: string;
+  targetId?: string;
+  sourceId?: string;
 }

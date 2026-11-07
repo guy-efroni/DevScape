@@ -596,6 +596,8 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
               relation: edgeData.relation,
               direction: RelationDirection.Outgoing,
               connectedNode: edgeData.target,
+              sourceId: edgeData.source,
+              targetId: edgeData.target,
             },
           ],
           metrics: { loc: null, cyclomatic: null, inbound: 1, outbound: 1 },
@@ -682,6 +684,8 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
             relation: edge.relation,
             direction: RelationDirection.Outgoing,
             connectedNode: edge.target,
+            sourceId: edge.source,
+            targetId: edge.target,
           },
         ];
       }
@@ -692,6 +696,8 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
             relation: edge.relation,
             direction: RelationDirection.Incoming,
             connectedNode: edge.source,
+            sourceId: edge.source,
+            targetId: edge.target,
           },
         ];
       }
