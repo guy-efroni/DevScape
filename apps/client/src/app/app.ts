@@ -12,7 +12,7 @@ import { UNKNOWN_ERROR_MESSAGE, ViewMode } from './app.constants';
   templateUrl: './app.html',
 })
 export class App {
-  private readonly codeGraphService: CodeGraphService = inject(CodeGraphService);
+  private readonly _codeGraphService: CodeGraphService = inject(CodeGraphService);
 
   protected readonly directoryPath: WritableSignal<string> = signal<string>('');
   protected readonly graph: WritableSignal<ICodeGraph | null> = signal<ICodeGraph | null>(null);
@@ -41,7 +41,7 @@ export class App {
     this.error.set(null);
     this.graph.set(null);
 
-    this.codeGraphService.parse(dirPath).subscribe({
+    this._codeGraphService.parse(dirPath).subscribe({
       next: (result) => {
         this.graph.set(result);
         this.loading.set(false);

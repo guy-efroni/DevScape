@@ -1,7 +1,8 @@
 import type { EdgeRelation } from '@devscape/shared';
+import type { RelationDirection } from '../enums/relation-direction.enum';
 
 export interface ISelectedRelation {
   relation: EdgeRelation;
-  direction: 'incoming' | 'outgoing';
+  direction: RelationDirection;
   connectedNode: string;
 }

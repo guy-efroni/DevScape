@@ -25,6 +25,7 @@ import type { INodeElementData } from './interfaces/node-element-data.interface'
 import type { ISelectedElement } from './interfaces/selected-element.interface';
 import type { ISelectedRelation } from './interfaces/selected-relation.interface';
 import { GraphColor } from './enums/graph-color.enum';
+import { RelationDirection } from './enums/relation-direction.enum';
 import {
   CSS_CLASS,
   EDGE_LABEL_SEPARATOR,
@@ -498,7 +499,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
         relations: [
           {
             relation: edgeData.relation,
-            direction: 'outgoing',
+            direction: RelationDirection.Outgoing,
             connectedNode: edgeData.target,
           },
         ],
@@ -559,7 +560,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
         return [
           {
             relation: edge.relation,
-            direction: 'outgoing',
+            direction: RelationDirection.Outgoing,
             connectedNode: edge.target,
           },
         ];
@@ -569,7 +570,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
         return [
           {
             relation: edge.relation,
-            direction: 'incoming',
+            direction: RelationDirection.Incoming,
             connectedNode: edge.source,
           },
         ];
