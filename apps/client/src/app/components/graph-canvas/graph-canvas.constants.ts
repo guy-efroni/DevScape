@@ -1,7 +1,8 @@
 import type { LayoutDirection as LayoutDirectionType } from './types/layout-direction.type';
 import type { ViewFilter as ViewFilterType } from './types/view-filter.type';
 
-/** Node sets offered by the view switcher. */
+type RankDirectionType = 'LR' | 'TB';
+
 export const ViewFilter: {
   readonly Architecture: ViewFilterType;
   readonly FilesOnly: ViewFilterType;
@@ -12,7 +13,6 @@ export const ViewFilter: {
   All: 'all',
 };
 
-/** Layout presets offered by the toolbar. */
 export const LayoutDirection: {
   readonly DagreLeftToRight: LayoutDirectionType;
   readonly DagreTopToBottom: LayoutDirectionType;
@@ -23,30 +23,26 @@ export const LayoutDirection: {
   Grid: 'grid',
 };
 
-/** Cytoscape layout plugin names. */
 export const LayoutName = {
   Dagre: 'dagre',
   Grid: 'grid',
 } as const;
 
-/** Dagre rank directions. */
 export const RankDirection: {
-  readonly LeftToRight: RankDirection;
-  readonly TopToBottom: RankDirection;
+  readonly LeftToRight: RankDirectionType;
+  readonly TopToBottom: RankDirectionType;
 } = {
   LeftToRight: 'LR',
   TopToBottom: 'TB',
 };
 
-export type RankDirection = 'LR' | 'TB';
+export type RankDirection = RankDirectionType;
 
-/** CSS classes applied to elements for search highlighting. */
 export const CSS_CLASS = {
   Highlighted: 'highlighted',
   Dimmed: 'dimmed',
 } as const;
 
-/** Reusable Cytoscape selectors. */
 export const SELECTOR = {
   Node: 'node',
   Edge: 'edge',
@@ -56,16 +52,9 @@ export const SELECTOR = {
   Dimmed: `node.${CSS_CLASS.Dimmed}, edge.${CSS_CLASS.Dimmed}`,
 } as const;
 
-/** Node type used for synthetic nodes that stand for external packages. */
 export const EXTERNAL_NODE_TYPE = 'external';
-
-/** Element type shown in the inspector when an edge is selected. */
 export const RELATIONSHIP_ELEMENT_TYPE = 'relationship';
-
-/** Prefix that marks a node label as a file. */
 export const FILE_LABEL_PREFIX = '📄 ';
-
-/** Separator between source and target in an edge inspector label. */
 export const EDGE_LABEL_SEPARATOR = ' ➔ ';
 
 export const GRAPH_LAYOUT = {
