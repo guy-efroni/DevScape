@@ -25,17 +25,28 @@
   </div>
 
   <div class="inspector-relations">
-    <h4>Relations</h4>
-    @if (selectedElement.relations.length) {
-      @for (relation of selectedElement.relations; track $index) {
-        <div class="relation-item">
-          <span class="relation-direction">{{ relation.direction }}</span>
-          <span class="relation-type">{{ relation.relation }}</span>
-          <code class="relation-node">{{ relation.connectedNode }}</code>
-        </div>
+    <button
+      type="button"
+      class="relations-toggle"
+      [attr.aria-expanded]="relationsExpanded()"
+      (click)="toggleRelations()"
+    >
+      <span>Relations ({{ selectedElement.relations.length }})</span>
+      <span class="relations-chevron" [class.expanded]="relationsExpanded()">⌄</span>
+    </button>
+
+    @if (relationsExpanded()) {
+      @if (selectedElement.relations.length) {
+        @for (relation of selectedElement.relations; track $index) {
+          <div class="relation-item">
+            <span class="relation-direction">{{ relation.direction }}</span>
+            <span class="relation-type">{{ relation.relation }}</span>
+            <code class="relation-node">{{ relation.connectedNode }}</code>
+          </div>
+        }
+      } @else {
+        <span class="no-relations">No relations found</span>
       }
-    } @else {
-      <span class="no-relations">No relations found</span>
     }
   </div>
 </aside>
