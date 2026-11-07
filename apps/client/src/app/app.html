@@ -9,16 +9,17 @@
     </div>
 
     <form class="path-control" (ngSubmit)="onSubmit()" (keydown)="onPathKeydown($event)">
-      <span class="path-label mono">{{ directoryPath().trim() || '~/projects/devscape/src' }}</span>
       <input
         id="dirPath"
         type="text"
         class="path-input mono"
-        [placeholder]="'~/projects/devscape/src'"
+        placeholder="~/projects/devscape/src"
         [ngModel]="directoryPath()"
         (ngModelChange)="directoryPath.set($event)"
         name="directoryPath"
         aria-label="Project directory path"
+        spellcheck="false"
+        autocomplete="off"
       />
       <span class="kbd">⌘K</span>
       <button type="submit" class="path-go" [disabled]="loading() || !directoryPath().trim()" aria-label="Parse directory">→</button>

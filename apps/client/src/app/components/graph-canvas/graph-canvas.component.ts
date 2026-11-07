@@ -348,9 +348,11 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       }
     }
 
+    const dpr = Math.max(window.devicePixelRatio || 1, 2);
     this._cytoscapeInstance = cytoscape({
       container: this.cyContainer.nativeElement,
       elements,
+      pixelRatio: dpr,
       style: [
         {
           selector: SELECTOR.Node,

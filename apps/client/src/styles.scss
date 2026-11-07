@@ -27,15 +27,21 @@ body {
   font-family: var(--font-ui);
   font-size: 12px;
   line-height: 1.4;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  text-rendering: auto;
 }
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
   color: inherit;
+  text-rendering: auto;
+}
+
+input,
+textarea {
+  font-variant-ligatures: none;
 }
 
 code,
