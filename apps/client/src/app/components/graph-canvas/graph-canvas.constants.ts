@@ -54,36 +54,36 @@ export const SELECTOR = {
 
 export const EXTERNAL_NODE_TYPE = 'external';
 export const RELATIONSHIP_ELEMENT_TYPE = 'relationship';
-export const FILE_LABEL_PREFIX = '📄 ';
-export const EDGE_LABEL_SEPARATOR = ' ➔ ';
+export const FILE_LABEL_PREFIX = '';
+export const EDGE_LABEL_SEPARATOR = ' → ';
 
 export const GRAPH_LAYOUT = {
-  FitPadding: 50,
-  NodeSeparation: 60,
-  RankSeparation: 100,
-  AnimationDurationMilliseconds: 500,
+  FitPadding: 40,
+  NodeSeparation: 56,
+  RankSeparation: 88,
+  AnimationDurationMilliseconds: 300,
 } as const;
 
 export const GRAPH_STYLE = {
   NodeFontSize: '11px',
-  NodeFontWeight: 600,
-  NodeBorderWidth: 1.5,
-  NodeHeight: 34,
-  NodePadding: '12px',
-  FileFontWeight: 700,
-  ClassBorderWidth: 2,
-  EdgeWidth: 2.5,
-  EdgeArrowScale: 1.1,
-  EdgeFontSize: '10px',
-  EdgeFontWeight: 600,
-  EdgeTextMarginY: -8,
-  EdgeTextBackgroundOpacity: 0.95,
+  NodeFontWeight: 500,
+  NodeBorderWidth: 1,
+  NodeHeight: 28,
+  NodePadding: '10px',
+  FileFontWeight: 600,
+  ClassBorderWidth: 1,
+  EdgeWidth: 1,
+  EdgeArrowScale: 0.9,
+  EdgeFontSize: '9px',
+  EdgeFontWeight: 500,
+  EdgeTextMarginY: -6,
+  EdgeTextBackgroundOpacity: 1,
   EdgeTextBackgroundPadding: '2px',
-  SelectedNodeBorderWidth: 3,
+  SelectedNodeBorderWidth: 1,
   SelectedNodeOpacity: 1,
-  SelectedEdgeWidth: 3.5,
+  SelectedEdgeWidth: 1.5,
   SelectedEdgeOpacity: 1,
-  DimmedOpacity: 0.12,
+  DimmedOpacity: 0.15,
 } as const;
 
 export function nodeTypeSelector(type: string): string {

@@ -1,94 +1,82 @@
 <main class="app-shell">
-  <header class="navbar">
-    <div class="brand">
-      <span class="brand-icon" aria-hidden="true">⌘</span>
-      <div class="brand-text">
-        <h1>DevScape</h1>
-        <span class="brand-tagline">local-first code intelligence</span>
-      </div>
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="wordmark">DevScape</span>
+      <span class="status-pill" [attr.data-state]="error() ? 'error' : loading() ? 'busy' : 'ok'">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span class="status-text mono">{{ error() ? 'Disconnected' : loading() ? 'Parsing' : 'Connected to local server' }}</span>
+      </span>
     </div>
 
-    <form class="path-control" (ngSubmit)="onSubmit()">
-      <span class="path-icon">⌁</span>
+    <form class="path-control" (ngSubmit)="onSubmit()" (keydown)="onPathKeydown($event)">
+      <span class="path-label mono">{{ directoryPath().trim() || '~/projects/devscape/src' }}</span>
       <input
         id="dirPath"
         type="text"
-        placeholder="/Users/dev/projects/my-app"
+        class="path-input mono"
+        [placeholder]="'~/projects/devscape/src'"
         [ngModel]="directoryPath()"
         (ngModelChange)="directoryPath.set($event)"
         name="directoryPath"
         aria-label="Project directory path"
       />
-      <button type="submit" [disabled]="loading() || !directoryPath().trim()" title="Parse directory">
-        {{ loading() ? 'Parsing…' : '↵' }}
-      </button>
+      <span class="kbd">⌘K</span>
+      <button type="submit" class="path-go" [disabled]="loading() || !directoryPath().trim()" aria-label="Parse directory">→</button>
     </form>
 
-    <div class="global-search" role="search">
-      <span class="search-icon">⌕</span>
-      <input type="search" placeholder="Search nodes, files, relations..." aria-label="Search graph" />
-      <kbd>Ctrl K</kbd>
-    </div>
-
-    <div class="nav-actions">
-      <button class="nav-action" type="button" (click)="onSubmit()" [disabled]="loading()" title="Rescan directory">
-        <span>↻</span> Rescan
+    <div class="topbar-right">
+      <button type="button" class="icon-btn" title="Lock layout" aria-label="Lock layout">
+        <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1" fill="none" stroke="currentColor"/><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor"/></svg>
       </button>
-      <button class="nav-action" type="button" title="Export graph as PNG">
-        <span>⇩</span> Export PNG
+      <div class="segmented mono" aria-label="Render mode">
+        <button type="button" class="seg active" title="2D Canvas">2D</button>
+        <button type="button" class="seg" title="WebGL" disabled>WebGL</button>
+      </div>
+      <button type="button" class="icon-btn" title="Export graph" aria-label="Export graph">
+        <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M8 2v8M5 7l3 3 3-3M3 11v2h10v-2" fill="none" stroke="currentColor" stroke-linecap="square"/></svg>
       </button>
-      <button class="icon-action" type="button" title="Settings" aria-label="Settings">⚙</button>
     </div>
   </header>
 
   @if (error(); as err) {
-    <section class="error-banner">
-      <span class="error-icon">!</span>
-      <div class="error-content">
-        <strong>Parsing Failed</strong>
-        <p>{{ err }}</p>
-      </div>
-    </section>
+    <div class="error-strip mono" role="alert">
+      <span class="error-tag">ERR</span>
+      <span class="error-msg">{{ err }}</span>
+    </div>
   }
 
-  @if (!graph() && !loading()) {
-    <section class="welcome-card">
-      <div class="welcome-icon">⌘</div>
-      <p class="eyebrow">CODEBASE GRAPH VISUALIZER</p>
-      <h2>See how your code fits together.</h2>
-      <p>
-        Point DevScape at a local TypeScript project to map files, symbols, and relationships in an interactive graph.
-      </p>
-
-      <div class="preset-row">
-        @for (preset of presets; track preset.path) {
-          <button type="button" class="chip-btn" (click)="selectPreset(preset.path)">
-            {{ preset.label }}
-          </button>
-        }
-      </div>
-
-      <div class="feature-grid">
-        <div class="feature-card">
-          <span class="f-icon">◈</span>
-          <h4>AST-aware graph</h4>
-          <p>Classes, interfaces, functions, and imports become navigable nodes.</p>
+  <div class="workspace">
+    @if (!graph() && !loading()) {
+      <section class="empty-state">
+        <div class="empty-head">
+          <span class="mono label">TARGET</span>
+          <p class="empty-copy">Select a local TypeScript directory to generate the codebase graph.</p>
         </div>
-        <div class="feature-card">
-          <span class="f-icon">⌁</span>
-          <h4>Runs locally</h4>
-          <p>Your source stays on your machine while the graph is generated.</p>
+        <div class="preset-list">
+          @for (preset of presets; track preset.path) {
+            <button type="button" class="preset-row" (click)="selectPreset(preset.path)">
+              <span class="preset-path mono">{{ preset.path }}</span>
+              <span class="preset-label">{{ preset.label }}</span>
+            </button>
+          }
         </div>
-        <div class="feature-card">
-          <span class="f-icon">✦</span>
-          <h4>Built to explore</h4>
-          <p>Zoom, pan, filter, and inspect relationships without losing context.</p>
+        <div class="meta-grid mono">
+          <div class="meta-cell"><span class="meta-k">ENGINE</span><span class="meta-v">AST / TS</span></div>
+          <div class="meta-cell"><span class="meta-k">SCOPE</span><span class="meta-v">LOCAL</span></div>
+          <div class="meta-cell"><span class="meta-k">RENDER</span><span class="meta-v">CYTOSCAPE</span></div>
         </div>
-      </div>
-    </section>
-  }
+      </section>
+    }
 
-  @if (graph(); as graph) {
-    <app-graph-results [graph]="graph" />
-  }
+    @if (loading()) {
+      <section class="loading-state mono" aria-live="polite">
+        <span class="spinner" aria-hidden="true"></span>
+        <span>Parsing {{ directoryPath().trim() }}…</span>
+      </section>
+    }
+
+    @if (graph(); as graph) {
+      <app-graph-results [graph]="graph" />
+    }
+  </div>
 </main>

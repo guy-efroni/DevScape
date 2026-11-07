@@ -1,97 +1,91 @@
 <section class="results">
-  <div class="results-header">
-    <div class="stats-pills">
-      <span class="stat-badge"><strong>{{ graph.nodes.length }}</strong> Nodes</span>
-      <span class="stat-badge"><strong>{{ graph.edges.length }}</strong> Edges</span>
+  <header class="results-bar mono">
+    <div class="bar-left">
+      <span class="counter"><span class="k">NODES</span><span class="v">{{ graph.nodes.length }}</span></span>
+      <span class="counter"><span class="k">EDGES</span><span class="v">{{ graph.edges.length }}</span></span>
     </div>
-
-    <div class="view-toggle">
+    <div class="segmented" aria-label="View mode">
       <button
         type="button"
+        class="seg"
         [class.active]="viewMode() === ViewMode.Graph"
         (click)="viewMode.set(ViewMode.Graph)"
-      >
-        🗺️ Graph View
-      </button>
+      >GRAPH</button>
       <button
         type="button"
+        class="seg"
         [class.active]="viewMode() === ViewMode.Table"
         (click)="viewMode.set(ViewMode.Table)"
-      >
-        📋 Table View
-      </button>
+      >TABLE</button>
     </div>
-  </div>
+  </header>
 
-  @if (viewMode() === ViewMode.Graph) {
-    <app-graph-canvas [graph]="graph" />
-  } @else {
-    <div class="table-toolbar">
-      <input
-        type="text"
-        placeholder="Search table rows..."
-        [ngModel]="tableFilter()"
-        (ngModelChange)="tableFilter.set($event)"
-        class="table-search-input"
-      />
-    </div>
+  <div class="results-body">
+    @if (viewMode() === ViewMode.Graph) {
+      <app-graph-canvas [graph]="graph" />
+    } @else {
+      <div class="table-view">
+        <div class="table-toolbar">
+          <input
+            type="text"
+            placeholder="Filter rows"
+            [ngModel]="tableFilter()"
+            (ngModelChange)="tableFilter.set($event)"
+            class="filter-input mono"
+            aria-label="Filter table"
+          />
+        </div>
 
-    <h3>Nodes ({{ filteredNodes(graph.nodes).length }})</h3>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Role</th>
-            <th>File</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (node of filteredNodes(graph.nodes); track node.id) {
-            <tr>
-              <td class="mono font-bold">{{ node.name }}</td>
-              <td>
-                <span class="badge" [attr.data-type]="node.type">{{ node.type }}</span>
-              </td>
-              <td>
-                @if (node.fileRole) {
-                  <span class="role-badge">{{ node.fileRole }}</span>
-                } @else {
-                  <span class="text-muted">—</span>
+        <div class="table-section">
+          <div class="table-title mono">NODES ({{ filteredNodes(graph.nodes).length }})</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>NAME</th>
+                  <th>TYPE</th>
+                  <th>ROLE</th>
+                  <th>FILE</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (node of filteredNodes(graph.nodes); track node.id) {
+                  <tr>
+                    <td class="mono name">{{ node.name }}</td>
+                    <td><span class="tag mono" [attr.data-type]="node.type">{{ node.type }}</span></td>
+                    <td class="mono dim">{{ node.fileRole || '—' }}</td>
+                    <td class="mono path">{{ node.filePath }}</td>
+                  </tr>
                 }
-              </td>
-              <td class="mono file-path">{{ node.filePath }}</td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-    <h3>Edges ({{ filteredEdges(graph.edges).length }})</h3>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Source</th>
-            <th>Relation</th>
-            <th>Target</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (edge of filteredEdges(graph.edges); track $index) {
-            <tr>
-              <td class="mono">{{ edge.source }}</td>
-              <td>
-                <span class="badge relation" [attr.data-relation]="edge.relation">
-                  {{ edge.relation }}
-                </span>
-              </td>
-              <td class="mono">{{ edge.target }}</td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-  }
+        <div class="table-section">
+          <div class="table-title mono">EDGES ({{ filteredEdges(graph.edges).length }})</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>SOURCE</th>
+                  <th>RELATION</th>
+                  <th>TARGET</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (edge of filteredEdges(graph.edges); track $index) {
+                  <tr>
+                    <td class="mono">{{ edge.source }}</td>
+                    <td><span class="tag mono" [attr.data-relation]="edge.relation">{{ edge.relation }}</span></td>
+                    <td class="mono">{{ edge.target }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
 </section>

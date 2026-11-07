@@ -30,6 +30,15 @@ export class App {
     this.onSubmit();
   }
 
+  protected onPathKeydown(event: KeyboardEvent): void {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+      event.preventDefault();
+      const el = (event.currentTarget as HTMLElement | null)?.querySelector<HTMLInputElement>('#dirPath');
+      el?.focus();
+      el?.select();
+    }
+  }
+
   protected onSubmit(): void {
     const dirPath = this.directoryPath().trim();
     if (!dirPath) return;

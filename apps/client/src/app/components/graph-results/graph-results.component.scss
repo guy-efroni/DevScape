@@ -1,182 +1,232 @@
-.results {
-  max-width: 1540px;
-  margin: 18px auto 0;
+﻿:host {
+  display: block;
+  height: 100%;
+  min-height: 0;
 }
 
-.results-header {
+.results {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--bg-canvas, #000);
+}
+
+.results-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 10px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--border, #18181b);
+  background: var(--bg-surface, #09090b);
+  font-size: 11px;
 }
 
-.stats-pills {
+.bar-left {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 12px;
 }
 
-.stat-badge {
-  padding: 5px 10px;
-  border: 1px solid #27272a;
-  border-radius: 999px;
-  color: #71717a;
-  background: #18181b;
-  font: 0.68rem "Cascadia Code", monospace;
-}
-
-.stat-badge strong {
-  color: #d4d4d8;
-}
-
-.view-toggle {
+.counter {
   display: inline-flex;
-  gap: 2px;
-  padding: 2px;
-  border: 1px solid #27272a;
-  border-radius: 8px;
-  background: #18181b;
+  align-items: center;
+  gap: 6px;
 }
 
-.view-toggle button {
-  padding: 6px 14px;
+.counter .k {
+  color: var(--text-dim, #52525b);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+.counter .v {
+  color: var(--text, #e4e4e7);
+  font-variant-numeric: tabular-nums;
+}
+
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--border, #18181b);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.seg {
+  height: 22px;
+  padding: 0 10px;
   border: 0;
-  border-radius: 6px;
-  color: #71717a;
+  border-right: 1px solid var(--border, #18181b);
   background: transparent;
-  font-size: 0.72rem;
-  font-weight: 600;
+  color: var(--text-dim, #52525b);
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.04em;
   cursor: pointer;
 }
 
-.view-toggle button:hover,
-.view-toggle button.active {
-  color: #f4f4f5;
-  background: #27272a;
-  box-shadow: 0 0 0 1px #3f3f46;
+.seg:last-child {
+  border-right: 0;
+}
+
+.seg.active {
+  background: var(--bg-canvas, #000);
+  color: var(--text, #e4e4e7);
+}
+
+.seg:hover:not(.active) {
+  color: var(--text-muted, #71717a);
+}
+
+.results-body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.table-view {
+  height: 100%;
+  overflow: auto;
+  padding: 10px;
 }
 
 .table-toolbar {
-  margin: 12px 0;
+  margin-bottom: 10px;
 }
 
-.table-search-input {
+.filter-input {
   width: 100%;
-  max-width: 340px;
-  padding: 8px 11px;
-  border: 1px solid #27272a;
-  border-radius: 6px;
+  max-width: 320px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--border, #18181b);
+  border-radius: 4px;
   outline: 0;
-  color: #d4d4d8;
-  background: #18181b;
-  font: 0.76rem "Cascadia Code", monospace;
+  background: var(--bg-surface, #09090b);
+  color: var(--text, #e4e4e7);
+  font-size: 11px;
 }
 
-.table-search-input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+.filter-input:focus {
+  border-color: var(--line, #27272a);
 }
 
-h3 {
-  margin: 18px 0 7px;
-  color: #e4e4e7;
-  font-size: 0.82rem;
-  font-weight: 700;
+.filter-input::placeholder {
+  color: var(--text-dim, #52525b);
+}
+
+.table-section {
+  margin-bottom: 14px;
+}
+
+.table-title {
+  margin-bottom: 6px;
+  color: var(--text-dim, #52525b);
+  font-size: 10px;
+  letter-spacing: 0.06em;
 }
 
 .table-wrap {
-  overflow-x: auto;
-  margin-bottom: 18px;
-  border: 1px solid #27272a;
-  border-radius: 8px;
-  background: #18181b;
+  overflow: auto;
+  border: 1px solid var(--border, #18181b);
+  border-radius: 4px;
+  background: var(--bg-surface, #09090b);
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.78rem;
+  font-size: 11px;
 }
 
 th,
 td {
-  padding: 10px 12px;
-  border-bottom: 1px solid #27272a;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border, #18181b);
   text-align: left;
+  vertical-align: top;
 }
 
 th {
-  color: #71717a;
-  background: #18181b;
-  font-size: 0.65rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  color: var(--text-dim, #52525b);
+  background: #09090b;
+  font: 500 10px var(--font-mono, monospace);
+  letter-spacing: 0.06em;
+  position: sticky;
+  top: 0;
 }
 
 td {
-  color: #a1a1aa;
+  color: var(--text-muted, #71717a);
 }
 
 tbody tr:last-child td {
   border-bottom: 0;
 }
 
-tbody tr:hover {
-  background: #27272a;
+tbody tr:hover td {
+  background: #000;
 }
 
-.mono {
-  font-family: "Cascadia Code", "Fira Code", monospace;
-  font-size: 0.72rem;
+.name {
+  color: var(--text, #e4e4e7);
+  font-weight: 500;
 }
 
-.font-bold {
-  color: #f4f4f5;
-  font-weight: 600;
+.path {
+  color: var(--text-dim, #52525b);
+  word-break: break-all;
 }
 
-.file-path {
-  color: #71717a;
+.dim {
+  color: var(--text-dim, #52525b);
 }
 
-.text-muted {
-  color: #52525b;
-}
-
-.badge {
+.tag {
   display: inline-block;
-  padding: 3px 7px;
-  border-radius: 999px;
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  padding: 1px 4px;
+  border: 1px solid var(--line, #27272a);
+  border-radius: 2px;
+  background: rgba(39, 39, 42, 0.25);
+  color: var(--text-muted, #71717a);
+  font-size: 10px;
   text-transform: uppercase;
 }
 
-.badge[data-type="file"] { color: #c4b5fd; background: #27272a; }
-.badge[data-type="class"] { color: #86efac; background: #052e16; }
-.badge[data-type="function"] { color: #93c5fd; background: #172554; }
-.badge[data-type="interface"] { color: #f9a8d4; background: #500724; }
-.badge[data-type="variable"] { color: #fcd34d; background: #451a03; }
-.badge.relation[data-relation="imports"] { color: #c4b5fd; background: #27272a; }
-.badge.relation[data-relation="extends"] { color: #f9a8d4; background: #500724; }
-.badge.relation[data-relation="calls"] { color: #93c5fd; background: #172554; }
+.tag[data-type='class'],
+.tag[data-relation='extends'] {
+  border-color: rgba(4, 120, 87, 0.5);
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.08);
+}
 
-.role-badge {
-  display: inline-block;
-  padding: 2px 7px;
-  border: 1px solid #3f3f46;
-  border-radius: 4px;
+.tag[data-type='interface'] {
+  border-color: rgba(190, 24, 93, 0.5);
+  color: #f9a8d4;
+  background: rgba(236, 72, 153, 0.08);
+}
+
+.tag[data-type='function'],
+.tag[data-relation='calls'] {
+  border-color: rgba(29, 78, 216, 0.5);
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.tag[data-type='file'],
+.tag[data-relation='imports'] {
+  border-color: var(--line, #27272a);
   color: #a1a1aa;
-  background: #27272a;
-  font-size: 0.62rem;
-  font-weight: 600;
-  text-transform: uppercase;
+  background: rgba(161, 161, 170, 0.06);
 }
 
 @media (max-width: 640px) {
-  .results-header {
-    align-items: flex-start;
-    flex-direction: column;
+  .results-bar {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 6px 10px;
   }
 }

@@ -1,52 +1,74 @@
-<aside class="inspector-card">
-  <div class="inspector-header">
-    <span class="pill-type" [attr.data-type]="selectedElement.type">{{ selectedElement.type }}</span>
-    @if (selectedElement.role) {
-      <span class="pill-role">{{ selectedElement.role }}</span>
-    }
-    <button type="button" class="btn-close" (click)="closed.emit()">✕</button>
-  </div>
-
-  <h3 class="inspector-name">{{ selectedElement.label }}</h3>
-
-  <div class="inspector-details">
-    @if (selectedElement.filePath) {
-      <div class="detail-item">
-        <span class="d-label">Location:</span>
-        <code class="d-val">{{ selectedElement.filePath }}</code>
+<aside class="inspector" aria-label="Node inspector">
+  <header class="inspector-head">
+    <div class="head-top">
+      <div class="title-row">
+        <span class="title mono">{{ selectedElement.label }}</span>
+        @if (selectedElement.extension) {
+          <span class="ext-tag mono">{{ selectedElement.extension }}</span>
+        } @else if (selectedElement.role) {
+          <span class="ext-tag mono">{{ selectedElement.role }}</span>
+        }
       </div>
+      <button type="button" class="close-btn" (click)="closed.emit()" aria-label="Close inspector">×</button>
+    </div>
+    @if (selectedElement.displayPath || selectedElement.filePath) {
+      <div class="path mono">{{ selectedElement.displayPath || selectedElement.filePath }}</div>
+    } @else if (selectedElement.target) {
+      <div class="path mono">{{ selectedElement.target }}</div>
     }
-    @if (selectedElement.target) {
-      <div class="detail-item">
-        <span class="d-label">Target:</span>
-        <code class="d-val">{{ selectedElement.target }}</code>
-      </div>
-    }
-  </div>
+  </header>
 
-  <div class="inspector-relations">
+  @if (selectedElement.metrics; as m) {
+    <section class="section">
+      <div class="section-label mono">METRICS</div>
+      <div class="metrics-grid mono">
+        <div class="metric">
+          <span class="metric-k">LOC</span>
+          <span class="metric-v">{{ m.loc ?? '—' }}</span>
+        </div>
+        <div class="metric">
+          <span class="metric-k">CYCLOMATIC</span>
+          <span class="metric-v">{{ m.cyclomatic ?? '—' }}</span>
+        </div>
+        <div class="metric">
+          <span class="metric-k">INBOUND</span>
+          <span class="metric-v">{{ m.inbound }}</span>
+        </div>
+        <div class="metric">
+          <span class="metric-k">OUTBOUND</span>
+          <span class="metric-v">{{ m.outbound }}</span>
+        </div>
+      </div>
+    </section>
+  }
+
+  <section class="section">
     <button
       type="button"
-      class="relations-toggle"
+      class="section-toggle mono"
       [attr.aria-expanded]="relationsExpanded()"
       (click)="toggleRelations()"
     >
-      <span>Relations ({{ selectedElement.relations.length }})</span>
-      <span class="relations-chevron" [class.expanded]="relationsExpanded()">⌄</span>
+      <span>CODE REFERENCES</span>
+      <span class="chev" [class.open]="relationsExpanded()">▸</span>
     </button>
 
     @if (relationsExpanded()) {
-      @if (selectedElement.relations.length) {
-        @for (relation of selectedElement.relations; track $index) {
-          <div class="relation-item">
-            <span class="relation-direction">{{ relation.direction }}</span>
-            <span class="relation-type">{{ relation.relation }}</span>
-            <code class="relation-node">{{ relation.connectedNode }}</code>
-          </div>
+      <div class="refs">
+        @if (selectedElement.relations.length) {
+          @for (relation of selectedElement.relations; track $index) {
+            <div class="ref-block">
+              <div class="ref-meta mono">
+                <span class="ref-dir">{{ relation.direction }}</span>
+                <span class="ref-rel">{{ relation.relation }}</span>
+              </div>
+              <pre class="code-box mono"><code>import {{ '{' }} {{ relation.connectedNode }} {{ '}' }} from '{{ relation.relation }}';</code></pre>
+            </div>
+          }
+        } @else {
+          <div class="empty mono">No references</div>
         }
-      } @else {
-        <span class="no-relations">No relations found</span>
-      }
+      </div>
     }
-  </div>
+  </section>
 </aside>

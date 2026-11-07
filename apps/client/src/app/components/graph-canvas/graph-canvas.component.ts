@@ -7,8 +7,11 @@ import {
   SimpleChanges,
   ViewChild,
   WritableSignal,
+  computed,
+  inject,
   signal,
 } from '@angular/core';
+import { NgZone } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import cytoscape, { CollectionReturnValue, Core, ElementDefinition, EventObject } from 'cytoscape';
 import dagre from 'cytoscape-dagre';
@@ -58,11 +61,15 @@ cytoscape.use(dagre);
   imports: [FormsModule, InspectorCardComponent],
   templateUrl: './graph-canvas.component.html',
   styleUrl: './graph-canvas.component.scss',
+  host: {
+    '(window:keydown)': 'onWindowKeydown($event)',
+  },
 })
 export class GraphCanvasComponent implements OnChanges, OnDestroy {
   @Input({ required: true }) public graph!: ICodeGraph;
   @ViewChild('cyContainer', { static: true }) public cyContainer!: ElementRef<HTMLDivElement>;
 
+  private readonly _zone = inject(NgZone);
   private _cytoscapeInstance: Core | null = null;
 
   public readonly viewFilter: WritableSignal<ViewFilterType> = signal<ViewFilterType>(
@@ -73,11 +80,40 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
   );
   public readonly showExternal: WritableSignal<boolean> = signal<boolean>(false);
   public readonly searchTerm: WritableSignal<string> = signal<string>('');
+  public readonly zoomPercent: WritableSignal<number> = signal<number>(100);
   public readonly ViewFilter = ViewFilter;
   public readonly LayoutDirection = LayoutDirection;
 
   public readonly selectedElement: WritableSignal<ISelectedElement | null> =
     signal<ISelectedElement | null>(null);
+
+  public readonly legendCounts = computed(() => {
+    const g = this.graph;
+    if (!g) return [] as Array<{ label: string; count: number; tone: string }>;
+    const byRole = new Map<string, number>();
+    let services = 0;
+    let controllers = 0;
+    let modules = 0;
+    let components = 0;
+    for (const n of g.nodes) {
+      const role = n.fileRole?.toLowerCase();
+      if (role === 'service') services++;
+      else if (role === 'controller') controllers++;
+      else if (role === 'module') modules++;
+      else if (role === 'component') components++;
+      else if (role) byRole.set(role, (byRole.get(role) ?? 0) + 1);
+    }
+    const items: Array<{ label: string; count: number; tone: string }> = [];
+    if (services) items.push({ label: 'Services', count: services, tone: 'service' });
+    if (controllers) items.push({ label: 'Controllers', count: controllers, tone: 'controller' });
+    if (modules) items.push({ label: 'Modules', count: modules, tone: 'module' });
+    if (components) items.push({ label: 'Components', count: components, tone: 'component' });
+    if (!items.length) {
+      items.push({ label: 'Nodes', count: g.nodes.length, tone: 'neutral' });
+      items.push({ label: 'Edges', count: g.edges.length, tone: 'neutral' });
+    }
+    return items;
+  });
 
   public ngOnChanges(changes: SimpleChanges): void {
     if (changes['graph'] && this.graph) {
@@ -109,6 +145,16 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
 
   public fitView(): void {
     this._cytoscapeInstance?.fit(undefined, GRAPH_LAYOUT.FitPadding);
+    this._syncZoom();
+  }
+
+  public onWindowKeydown(event: KeyboardEvent): void {
+    const meta = event.metaKey || event.ctrlKey;
+    if (!meta) return;
+    if (event.key === '0') {
+      event.preventDefault();
+      this.fitView();
+    }
   }
 
   public onSearchChange(term: string): void {
@@ -133,6 +179,11 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       matchedNodes.removeClass(CSS_CLASS.Dimmed).addClass(CSS_CLASS.Highlighted);
       matchedNodes.connectedEdges().removeClass(CSS_CLASS.Dimmed).addClass(CSS_CLASS.Highlighted);
     });
+  }
+
+  private _syncZoom(): void {
+    if (!this._cytoscapeInstance) return;
+    this.zoomPercent.set(Math.round(this._cytoscapeInstance.zoom() * 100));
   }
 
   private _runLayout(): void {
@@ -305,7 +356,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           selector: SELECTOR.Node,
           style: {
             label: 'data(label)',
-            'font-family': 'Inter, system-ui, -apple-system, sans-serif',
+            'font-family': '"JetBrains Mono", ui-monospace, monospace',
             'font-size': GRAPH_STYLE.NodeFontSize,
             'font-weight': GRAPH_STYLE.NodeFontWeight,
             color: GraphColor.CanvasText,
@@ -315,7 +366,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
             'border-width': GRAPH_STYLE.NodeBorderWidth,
             'border-color': GraphColor.NeutralBorder,
             shape: 'round-rectangle',
-            'corner-radius': '6px',
+            'corner-radius': '4px',
             width: 'label',
             height: GRAPH_STYLE.NodeHeight,
             padding: GRAPH_STYLE.NodePadding,
@@ -419,9 +470,10 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
             label: 'data(relation)',
             'font-size': GRAPH_STYLE.EdgeFontSize,
             'font-weight': GRAPH_STYLE.EdgeFontWeight,
+            'font-family': '"JetBrains Mono", ui-monospace, monospace',
             'text-rotation': 'autorotate',
             'text-margin-y': GRAPH_STYLE.EdgeTextMarginY,
-            color: GraphColor.FileBorder,
+            color: GraphColor.ImportText,
             'text-background-color': GraphColor.CanvasBackground,
             'text-background-opacity': GRAPH_STYLE.EdgeTextBackgroundOpacity,
             'text-background-padding': GRAPH_STYLE.EdgeTextBackgroundPadding,
@@ -458,6 +510,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           style: {
             'border-width': GRAPH_STYLE.SelectedNodeBorderWidth,
             'border-color': GraphColor.Selection,
+            'background-opacity': 1,
             opacity: GRAPH_STYLE.SelectedNodeOpacity,
           },
         },
@@ -479,39 +532,71 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
 
     this._runLayout();
 
+    this._cytoscapeInstance.on('zoom', () => this._zone.run(() => this._syncZoom()));
+    this._syncZoom();
+
     this._cytoscapeInstance.on('tap', SELECTOR.Node, (event: EventObject): void => {
       const nodeData: INodeElementData = event.target.data() as INodeElementData;
-      this.selectedElement.set({
-        type: nodeData.type,
-        label: nodeData.label,
-        role: nodeData.fileRole,
-        filePath: nodeData.filePath,
-        relations: this._getNodeRelations(nodeData.id),
+      this._zone.run(() => {
+        this.selectedElement.set({
+          type: nodeData.type,
+          label: nodeData.label,
+          role: nodeData.fileRole,
+          filePath: nodeData.filePath,
+          ...this._deriveFileDisplay(nodeData.filePath, nodeData.label),
+          relations: this._getNodeRelations(nodeData.id),
+          metrics: this._computeMetrics(nodeData.id),
+        });
       });
     });
 
     this._cytoscapeInstance.on('tap', SELECTOR.Edge, (event: EventObject): void => {
       const edgeData: IEdgeElementData = event.target.data() as IEdgeElementData;
-      this.selectedElement.set({
-        type: RELATIONSHIP_ELEMENT_TYPE,
-        label: `${edgeData.source}${EDGE_LABEL_SEPARATOR}${edgeData.target}`,
-        role: edgeData.relation,
-        target: edgeData.target,
-        relations: [
-          {
-            relation: edgeData.relation,
-            direction: RelationDirection.Outgoing,
-            connectedNode: edgeData.target,
-          },
-        ],
+      this._zone.run(() => {
+        this.selectedElement.set({
+          type: RELATIONSHIP_ELEMENT_TYPE,
+          label: `${edgeData.source}${EDGE_LABEL_SEPARATOR}${edgeData.target}`,
+          role: edgeData.relation,
+          target: edgeData.target,
+          relations: [
+            {
+              relation: edgeData.relation,
+              direction: RelationDirection.Outgoing,
+              connectedNode: edgeData.target,
+            },
+          ],
+          metrics: { loc: null, cyclomatic: null, inbound: 1, outbound: 1 },
+        });
       });
     });
 
     this._cytoscapeInstance.on('tap', (event: EventObject): void => {
       if (event.target === this._cytoscapeInstance) {
-        this.selectedElement.set(null);
+        this._zone.run(() => this.selectedElement.set(null));
       }
     });
+  }
+
+  private _deriveFileDisplay(
+    filePath: string | undefined,
+    label: string,
+  ): { extension?: string; displayPath?: string } {
+    const path = filePath ?? '';
+    const name = path ? path.replace(/\\/g, '/').split('/').pop() ?? label : label;
+    const dot = name.lastIndexOf('.');
+    const extension = dot > 0 ? name.slice(dot) : undefined;
+    const displayPath = path ? path.replace(/\\/g, '/') : undefined;
+    return { extension, displayPath };
+  }
+
+  private _computeMetrics(nodeId: string): ISelectedElement['metrics'] {
+    let inbound = 0;
+    let outbound = 0;
+    for (const e of this.graph.edges) {
+      if (e.source === nodeId) outbound++;
+      if (e.target === nodeId) inbound++;
+    }
+    return { loc: null, cyclomatic: null, inbound, outbound };
   }
 
   private _createNodeElement(node: ICodeNode): ElementDefinition {
