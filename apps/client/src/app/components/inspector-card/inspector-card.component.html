@@ -1,0 +1,52 @@
+<aside class="inspector-card">
+  <div class="inspector-header">
+    <span class="pill-type" [attr.data-type]="selectedElement.type">{{ selectedElement.type }}</span>
+    @if (selectedElement.role) {
+      <span class="pill-role">{{ selectedElement.role }}</span>
+    }
+    <button type="button" class="btn-close" (click)="closed.emit()">✕</button>
+  </div>
+
+  <h3 class="inspector-name">{{ selectedElement.label }}</h3>
+
+  <div class="inspector-details">
+    @if (selectedElement.filePath) {
+      <div class="detail-item">
+        <span class="d-label">Location:</span>
+        <code class="d-val">{{ selectedElement.filePath }}</code>
+      </div>
+    }
+    @if (selectedElement.target) {
+      <div class="detail-item">
+        <span class="d-label">Target:</span>
+        <code class="d-val">{{ selectedElement.target }}</code>
+      </div>
+    }
+  </div>
+
+  <div class="inspector-relations">
+    <button
+      type="button"
+      class="relations-toggle"
+      [attr.aria-expanded]="relationsExpanded()"
+      (click)="toggleRelations()"
+    >
+      <span>Relations ({{ selectedElement.relations.length }})</span>
+      <span class="relations-chevron" [class.expanded]="relationsExpanded()">⌄</span>
+    </button>
+
+    @if (relationsExpanded()) {
+      @if (selectedElement.relations.length) {
+        @for (relation of selectedElement.relations; track $index) {
+          <div class="relation-item">
+            <span class="relation-direction">{{ relation.direction }}</span>
+            <span class="relation-type">{{ relation.relation }}</span>
+            <code class="relation-node">{{ relation.connectedNode }}</code>
+          </div>
+        }
+      } @else {
+        <span class="no-relations">No relations found</span>
+      }
+    }
+  </div>
+</aside>

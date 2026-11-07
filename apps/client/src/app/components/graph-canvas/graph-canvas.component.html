@@ -99,31 +99,6 @@
   </footer>
 
   @if (selectedElement(); as el) {
-    <aside class="inspector-card">
-      <div class="inspector-header">
-        <span class="pill-type" [attr.data-type]="el.type">{{ el.type }}</span>
-        @if (el.role) {
-          <span class="pill-role">{{ el.role }}</span>
-        }
-        <button type="button" class="btn-close" (click)="selectedElement.set(null)">✕</button>
-      </div>
-
-      <h3 class="inspector-name">{{ el.label }}</h3>
-
-      <div class="inspector-details">
-        @if (el.filePath) {
-          <div class="detail-item">
-            <span class="d-label">Location:</span>
-            <code class="d-val">{{ el.filePath }}</code>
-          </div>
-        }
-        @if (el.target) {
-          <div class="detail-item">
-            <span class="d-label">Target:</span>
-            <code class="d-val">{{ el.target }}</code>
-          </div>
-        }
-      </div>
-    </aside>
+    <app-inspector-card [selectedElement]="el" (closed)="selectedElement.set(null)" />
   }
 </div>

@@ -23,7 +23,9 @@ import type { ICodeGraph, ICodeNode } from '@devscape/shared';
 import type { IEdgeElementData } from './interfaces/edge-element-data.interface';
 import type { INodeElementData } from './interfaces/node-element-data.interface';
 import type { ISelectedElement } from './interfaces/selected-element.interface';
+import type { ISelectedRelation } from './interfaces/selected-relation.interface';
 import { GraphColor } from './enums/graph-color.enum';
+import { RelationDirection } from './enums/relation-direction.enum';
 import {
   CSS_CLASS,
   EDGE_LABEL_SEPARATOR,
@@ -45,13 +47,14 @@ import {
 import type { LayoutDirection as LayoutDirectionType } from './types/layout-direction.type';
 import type { GraphLayoutOptions } from './types/graph-layout-options.type';
 import type { ViewFilter as ViewFilterType } from './types/view-filter.type';
+import { InspectorCardComponent } from '../inspector-card/inspector-card.component';
 
 cytoscape.use(dagre);
 
 @Component({
   selector: 'app-graph-canvas',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, InspectorCardComponent],
   templateUrl: './graph-canvas.component.html',
   styleUrl: './graph-canvas.component.scss',
 })
@@ -482,6 +485,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
         label: nodeData.label,
         role: nodeData.fileRole,
         filePath: nodeData.filePath,
+        relations: this._getNodeRelations(nodeData.id),
       });
     });
 
@@ -492,6 +496,13 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
         label: `${edgeData.source}${EDGE_LABEL_SEPARATOR}${edgeData.target}`,
         role: edgeData.relation,
         target: edgeData.target,
+        relations: [
+          {
+            relation: edgeData.relation,
+            direction: RelationDirection.Outgoing,
+            connectedNode: edgeData.target,
+          },
+        ],
       });
     });
 
@@ -541,5 +552,31 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
         relation,
       },
     };
+  }
+
+  private _getNodeRelations(nodeId: string): ISelectedRelation[] {
+    return this.graph.edges.flatMap((edge): ISelectedRelation[] => {
+      if (edge.source === nodeId) {
+        return [
+          {
+            relation: edge.relation,
+            direction: RelationDirection.Outgoing,
+            connectedNode: edge.target,
+          },
+        ];
+      }
+
+      if (edge.target === nodeId) {
+        return [
+          {
+            relation: edge.relation,
+            direction: RelationDirection.Incoming,
+            connectedNode: edge.source,
+          },
+        ];
+      }
+
+      return [];
+    });
   }
 }
