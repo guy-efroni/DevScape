@@ -32,7 +32,7 @@ describe('AstParserService', () => {
     expect(result).toEqual({ nodes: [], edges: [] });
   });
 
-  it('should extract file, class, interface, function, and import edges', () => {
+  it('should extract nodes, imports, inheritance, and call edges', () => {
     const sampleTs = `
       import { Injectable } from '@nestjs/common';
 
@@ -40,17 +40,24 @@ describe('AstParserService', () => {
         getUser(id: string): string;
       }
 
-      export class UserService implements IUserService {
+      export interface IAdminService extends IUserService {
+      }
+
+      export class BaseService {
+      }
+
+      export class UserService extends BaseService implements IAdminService {
         getUser(id: string): string {
           return id;
         }
       }
 
       export function helper(): void {
-        console.log('helper');
       }
 
       export const DEFAULT_TIMEOUT = 5000;
+
+      helper();
     `;
 
     fs.writeFileSync(path.join(tempDir, 'user.service.ts'), sampleTs);
@@ -89,9 +96,31 @@ describe('AstParserService', () => {
     expect(importEdge).toBeDefined();
     expect(importEdge?.target).toBe('@nestjs/common');
 
-    // Expect implements/extends edge
-    const extendsEdge = result.edges.find((e: IGraphEdge) => e.relation === 'extends');
-    expect(extendsEdge).toBeDefined();
-    expect(extendsEdge?.target).toBe('user.service.ts::IUserService');
+    const inheritanceEdges: IGraphEdge[] = result.edges.filter(
+      (edge: IGraphEdge): boolean => edge.relation === 'extends',
+    );
+    expect(inheritanceEdges).toEqual(
+      expect.arrayContaining([
+        {
+          source: 'user.service.ts::IAdminService',
+          target: 'user.service.ts::IUserService',
+          relation: 'extends',
+        },
+        {
+          source: 'user.service.ts::UserService',
+          target: 'user.service.ts::BaseService',
+          relation: 'extends',
+        },
+        {
+          source: 'user.service.ts::UserService',
+          target: 'user.service.ts::IAdminService',
+          relation: 'extends',
+        },
+      ]),
+    );
+
+    const callsEdge = result.edges.find((e: IGraphEdge) => e.relation === 'calls');
+    expect(callsEdge).toBeDefined();
+    expect(callsEdge?.target).toBe('user.service.ts::helper');
   });
 });
