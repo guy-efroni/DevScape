@@ -56,15 +56,15 @@ export class AstParserService {
       skipLibCheck: true,
     });
 
-    const sourceFiles = program.getSourceFiles().filter((sf) => {
-      if (sf.isDeclarationFile) return false;
-      const normalized = path.normalize(sf.fileName);
+    const sourceFiles = program.getSourceFiles().filter((sourceFile) => {
+      if (sourceFile.isDeclarationFile) return false;
+      const normalized = path.normalize(sourceFile.fileName);
       return normalized.startsWith(resolvedPath);
     });
 
     // Map of all known relative file paths in this project
     const knownFiles = new Set(
-      sourceFiles.map((sf) => this.toRelativePath(resolvedPath, sf.fileName)),
+      sourceFiles.map((sourceFile) => this.toRelativePath(resolvedPath, sourceFile.fileName)),
     );
 
     const nodes: ICodeNode[] = [];
@@ -133,7 +133,7 @@ export class AstParserService {
     // Check by AST decorators
     let detectedFromAst: FileRole | null = null;
 
-    const visit = (node: ts.Node) => {
+    const visit = (node: ts.Node): void => {
       if (detectedFromAst) return;
 
       if (ts.isClassDeclaration(node) && node.modifiers) {
@@ -162,12 +162,12 @@ export class AstParserService {
   //  File collection
   // ──────────────────────────────────────────────
 
-  private collectTsFiles(dir: string): string[] {
+  private collectTsFiles(directoryPath: string): string[] {
     const results: string[] = [];
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    const entries = fs.readdirSync(directoryPath, { withFileTypes: true });
 
     for (const entry of entries) {
-      const fullPath = path.join(dir, entry.name);
+      const fullPath = path.join(directoryPath, entry.name);
 
       if (entry.isDirectory()) {
         if (
@@ -211,7 +211,7 @@ export class AstParserService {
     relativeFilePath: string,
     nodes: ICodeNode[],
   ): void {
-    const visit = (node: ts.Node) => {
+    const visit = (node: ts.Node): void => {
       if (ts.isClassDeclaration(node) && node.name) {
         nodes.push(
           this.createNode(node.name.text, NODE_TYPES.Class, relativeFilePath),
@@ -225,10 +225,10 @@ export class AstParserService {
           this.createNode(node.name.text, NODE_TYPES.Interface, relativeFilePath),
         );
       } else if (ts.isVariableStatement(node)) {
-        for (const decl of node.declarationList.declarations) {
-          if (ts.isIdentifier(decl.name)) {
+        for (const variableDeclaration of node.declarationList.declarations) {
+          if (ts.isIdentifier(variableDeclaration.name)) {
             nodes.push(
-              this.createNode(decl.name.text, NODE_TYPES.Variable, relativeFilePath),
+              this.createNode(variableDeclaration.name.text, NODE_TYPES.Variable, relativeFilePath),
             );
           }
         }
@@ -283,9 +283,9 @@ export class AstParserService {
       return importSpecifier; // External module like '@nestjs/common'
     }
 
-    const dir = path.dirname(relativeFilePath);
+    const sourceDirectory = path.dirname(relativeFilePath);
     let resolved = this.toPosixPath(
-      path.normalize(path.join(dir, importSpecifier)),
+      path.normalize(path.join(sourceDirectory, importSpecifier)),
     );
     resolved = resolved.replace(MODULE_EXTENSION_PATTERN, '');
 
@@ -306,10 +306,10 @@ export class AstParserService {
     edges: IGraphEdge[],
     knownFiles: Set<string>,
   ): void {
-    for (const stmt of sourceFile.statements) {
-      if (!ts.isImportDeclaration(stmt)) continue;
+    for (const statement of sourceFile.statements) {
+      if (!ts.isImportDeclaration(statement)) continue;
 
-      const moduleSpecifier = stmt.moduleSpecifier;
+      const moduleSpecifier = statement.moduleSpecifier;
       if (!ts.isStringLiteral(moduleSpecifier)) continue;
 
       const rawSpecifier = moduleSpecifier.text;
@@ -330,7 +330,7 @@ export class AstParserService {
     edges: IGraphEdge[],
     symbolMapByName: Map<string, ICodeNode>,
   ): void {
-    const visit = (node: ts.Node) => {
+    const visit = (node: ts.Node): void => {
       if ((ts.isClassDeclaration(node) || ts.isInterfaceDeclaration(node)) && node.name) {
         const entityName = node.name.text;
         const sourceId = `${relativeFilePath}${NODE_ID_SEPARATOR}${entityName}`;
@@ -366,7 +366,7 @@ export class AstParserService {
     edges: IGraphEdge[],
     symbolMapByName: Map<string, ICodeNode>,
   ): void {
-    const visit = (node: ts.Node) => {
+    const visit = (node: ts.Node): void => {
       if (ts.isCallExpression(node)) {
         const callee = node.expression;
 

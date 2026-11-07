@@ -6,10 +6,16 @@ import {
   OnDestroy,
   SimpleChanges,
   ViewChild,
+  WritableSignal,
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import cytoscape, { Core, ElementDefinition } from 'cytoscape';
+import cytoscape, {
+  CollectionReturnValue,
+  Core,
+  ElementDefinition,
+  EventObject,
+} from 'cytoscape';
 import dagre from 'cytoscape-dagre';
 import {
   EdgeRelation,
@@ -19,6 +25,9 @@ import {
   NodeType,
 } from '@devscape/shared';
 import type { ICodeGraph, ICodeNode } from '@devscape/shared';
+import type { EdgeElementData } from './interfaces/edge-element-data.interface';
+import type { NodeElementData } from './interfaces/node-element-data.interface';
+import type { SelectedElement } from './interfaces/selected-element.interface';
 import {
   CSS_CLASS,
   EDGE_LABEL_SEPARATOR,
@@ -35,8 +44,8 @@ import {
   nodeRoleSelector,
   nodeTypeSelector,
 } from './graph-canvas.constants';
+import type { GraphLayoutOptions } from './types/graph-layout-options.type';
 
-// Register dagre layout plugin with cytoscape
 cytoscape.use(dagre);
 
 @Component({
@@ -50,23 +59,19 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
   @Input({ required: true }) graph!: ICodeGraph;
   @ViewChild('cyContainer', { static: true }) cyContainer!: ElementRef<HTMLDivElement>;
 
-  private cy: Core | null = null;
+  private cytoscapeInstance: Core | null = null;
 
-  protected viewFilter = signal<ViewFilter>(ViewFilter.Architecture);
-  protected activeLayout = signal<LayoutDirection>(LayoutDirection.DagreLeftToRight);
-  protected showExternal = signal(false);
-  protected searchTerm = signal('');
+  protected readonly viewFilter: WritableSignal<ViewFilter> = signal<ViewFilter>(ViewFilter.Architecture);
+  protected readonly activeLayout: WritableSignal<LayoutDirection> = signal<LayoutDirection>(
+    LayoutDirection.DagreLeftToRight,
+  );
+  protected readonly showExternal: WritableSignal<boolean> = signal<boolean>(false);
+  protected readonly searchTerm: WritableSignal<string> = signal<string>('');
 
   protected readonly ViewFilter = ViewFilter;
   protected readonly LayoutDirection = LayoutDirection;
 
-  protected selectedElement = signal<{
-    type: string;
-    label: string;
-    role?: string;
-    filePath?: string;
-    target?: string;
-  } | null>(null);
+  protected readonly selectedElement: WritableSignal<SelectedElement | null> = signal<SelectedElement | null>(null);
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['graph'] && this.graph) {
@@ -75,9 +80,9 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if (this.cy) {
-      this.cy.destroy();
-      this.cy = null;
+    if (this.cytoscapeInstance) {
+      this.cytoscapeInstance.destroy();
+      this.cytoscapeInstance = null;
     }
   }
 
@@ -97,35 +102,37 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
   }
 
   fitView(): void {
-    this.cy?.fit(undefined, 50);
+    this.cytoscapeInstance?.fit(undefined, 50);
   }
 
   onSearchChange(term: string): void {
     this.searchTerm.set(term);
-    if (!this.cy) return;
+    if (!this.cytoscapeInstance) return;
 
-    this.cy.batch(() => {
+    this.cytoscapeInstance.batch((): void => {
       if (!term.trim()) {
-        this.cy!.$(SELECTOR.All).removeClass(`${CSS_CLASS.Highlighted} ${CSS_CLASS.Dimmed}`);
+        this.cytoscapeInstance!.$(SELECTOR.All).removeClass(`${CSS_CLASS.Highlighted} ${CSS_CLASS.Dimmed}`);
         return;
       }
 
-      const q = term.toLowerCase().trim();
-      const matchedNodes = this.cy!.$(nodeLabelContainsSelector(q));
-      this.cy!.$(SELECTOR.All).addClass(CSS_CLASS.Dimmed).removeClass(CSS_CLASS.Highlighted);
+      const normalizedSearchTerm: string = term.toLowerCase().trim();
+      const matchedNodes: CollectionReturnValue = this.cytoscapeInstance!.$(
+        nodeLabelContainsSelector(normalizedSearchTerm),
+      );
+      this.cytoscapeInstance!.$(SELECTOR.All).addClass(CSS_CLASS.Dimmed).removeClass(CSS_CLASS.Highlighted);
       matchedNodes.removeClass(CSS_CLASS.Dimmed).addClass(CSS_CLASS.Highlighted);
       matchedNodes.connectedEdges().removeClass(CSS_CLASS.Dimmed).addClass(CSS_CLASS.Highlighted);
     });
   }
 
   private runLayout(): void {
-    if (!this.cy) return;
+    if (!this.cytoscapeInstance) return;
 
-    const layoutName = this.activeLayout();
-    let config: any;
+    const selectedLayout: LayoutDirection = this.activeLayout();
+    let layoutOptions: GraphLayoutOptions;
 
-    if (layoutName === LayoutDirection.DagreLeftToRight) {
-      config = {
+    if (selectedLayout === LayoutDirection.DagreLeftToRight) {
+      layoutOptions = {
         name: LayoutName.Dagre,
         rankDir: RankDirection.LeftToRight,
         nodeSep: 60,
@@ -134,8 +141,8 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
         animationDuration: 500,
         padding: 50,
       };
-    } else if (layoutName === LayoutDirection.DagreTopToBottom) {
-      config = {
+    } else if (selectedLayout === LayoutDirection.DagreTopToBottom) {
+      layoutOptions = {
         name: LayoutName.Dagre,
         rankDir: RankDirection.TopToBottom,
         nodeSep: 60,
@@ -145,7 +152,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
         padding: 50,
       };
     } else {
-      config = {
+      layoutOptions = {
         name: LayoutName.Grid,
         animate: true,
         animationDuration: 500,
@@ -153,35 +160,35 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       };
     }
 
-    this.cy.layout(config).run();
+    this.cytoscapeInstance.layout(layoutOptions).run();
   }
 
   private renderGraph(): void {
-    if (this.cy) {
-      this.cy.destroy();
-      this.cy = null;
+    if (this.cytoscapeInstance) {
+      this.cytoscapeInstance.destroy();
+      this.cytoscapeInstance = null;
     }
 
     const elements: ElementDefinition[] = [];
-    const allowedNodeIds = new Set<string>();
+    const allowedNodeIds: Set<string> = new Set<string>();
 
-    const filter = this.viewFilter();
-    const includeExternal = this.showExternal();
+    const filter: ViewFilter = this.viewFilter();
+    const includeExternal: boolean = this.showExternal();
 
     // Build comprehensive lookup indexes from the entire raw graph
-    const nodeById = new Map<string, ICodeNode>();
-    const nodeByName = new Map<string, ICodeNode>();
-    const nodeByNormPath = new Map<string, ICodeNode>();
+    const nodeById: Map<string, ICodeNode> = new Map<string, ICodeNode>();
+    const nodeByName: Map<string, ICodeNode> = new Map<string, ICodeNode>();
+    const nodeByNormalizedFilePath: Map<string, ICodeNode> = new Map<string, ICodeNode>();
 
     for (const node of this.graph.nodes) {
       nodeById.set(node.id, node);
       nodeByName.set(node.name, node);
-      const norm = node.filePath.replace(MODULE_EXTENSION_PATTERN, '').toLowerCase();
-      nodeByNormPath.set(norm, node);
+      const normalizedFilePath: string = node.filePath.replace(MODULE_EXTENSION_PATTERN, '').toLowerCase();
+      nodeByNormalizedFilePath.set(normalizedFilePath, node);
     }
 
     // 1. Filter Nodes based on selected view mode
-    const filteredNodes = this.graph.nodes.filter((node) => {
+    const filteredNodes: ICodeNode[] = this.graph.nodes.filter((node: ICodeNode): boolean => {
       if (filter === ViewFilter.FilesOnly) {
         return node.type === NodeType.File;
       }
@@ -206,50 +213,50 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
     }
 
     // Helper to resolve an edge endpoint to a currently visible node ID
-    const resolveToVisibleNodeId = (rawEndpoint: string): string | null => {
+    const resolveToVisibleNodeId: (rawEndpoint: string) => string | null = (rawEndpoint: string): string | null => {
       // Direct match
       if (allowedNodeIds.has(rawEndpoint)) return rawEndpoint;
 
       // Match by exact node ID in full graph -> check if its parent file is visible
-      const node = nodeById.get(rawEndpoint);
+      const node: ICodeNode | undefined = nodeById.get(rawEndpoint);
       if (node && node.parent && allowedNodeIds.has(node.parent)) {
         return node.parent;
       }
 
       // Match by symbol name
-      const byName = nodeByName.get(rawEndpoint);
-      if (byName) {
-        if (allowedNodeIds.has(byName.id)) return byName.id;
-        if (byName.parent && allowedNodeIds.has(byName.parent)) return byName.parent;
+      const nodeWithMatchingName: ICodeNode | undefined = nodeByName.get(rawEndpoint);
+      if (nodeWithMatchingName) {
+        if (allowedNodeIds.has(nodeWithMatchingName.id)) return nodeWithMatchingName.id;
+        if (nodeWithMatchingName.parent && allowedNodeIds.has(nodeWithMatchingName.parent)) return nodeWithMatchingName.parent;
       }
 
       // Match by normalized file path (e.g. `./app.service.js` or `app.service`)
-      const cleaned = rawEndpoint
+      const normalizedEndpoint: string = rawEndpoint
         .replace(LEADING_RELATIVE_SEGMENT_PATTERN, '')
         .replace(MODULE_EXTENSION_PATTERN, '')
         .toLowerCase();
-      const byNorm = nodeByNormPath.get(cleaned);
-      if (byNorm && allowedNodeIds.has(byNorm.id)) {
-        return byNorm.id;
+      const nodeWithMatchingPath: ICodeNode | undefined = nodeByNormalizedFilePath.get(normalizedEndpoint);
+      if (nodeWithMatchingPath && allowedNodeIds.has(nodeWithMatchingPath.id)) {
+        return nodeWithMatchingPath.id;
       }
 
       return null;
     };
 
     // 2. Filter & Add Edges
-    let edgeIndex = 0;
-    const addedEdgeKeys = new Set<string>();
+    let edgeIndex: number = 0;
+    const addedEdgeKeys: Set<string> = new Set<string>();
 
     for (const edge of this.graph.edges) {
-      const resolvedSource = resolveToVisibleNodeId(edge.source);
-      const resolvedTarget = resolveToVisibleNodeId(edge.target);
+      const resolvedSource: string | null = resolveToVisibleNodeId(edge.source);
+      const resolvedTarget: string | null = resolveToVisibleNodeId(edge.target);
 
       // A. Both endpoints resolve to visible nodes in current view
       if (resolvedSource && resolvedTarget) {
         // Prevent self-loops unless desired
         if (resolvedSource === resolvedTarget) continue;
 
-        const edgeKey = `${resolvedSource}->${resolvedTarget}:${edge.relation}`;
+        const edgeKey: string = `${resolvedSource}->${resolvedTarget}:${edge.relation}`;
         if (!addedEdgeKeys.has(edgeKey)) {
           addedEdgeKeys.add(edgeKey);
           elements.push({
@@ -279,7 +286,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           });
         }
 
-        const edgeKey = `${resolvedSource}->${edge.target}:${edge.relation}`;
+        const edgeKey: string = `${resolvedSource}->${edge.target}:${edge.relation}`;
         if (!addedEdgeKeys.has(edgeKey)) {
           addedEdgeKeys.add(edgeKey);
           elements.push({
@@ -296,11 +303,10 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
     }
 
     // 3. Initialize Cytoscape with visible relation arrows
-    this.cy = cytoscape({
+    this.cytoscapeInstance = cytoscape({
       container: this.cyContainer.nativeElement,
       elements,
       style: [
-        // ── Clean Card Nodes ──
         {
           selector: SELECTOR.Node,
           style: {
@@ -485,28 +491,28 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
     this.runLayout();
 
     // Tap handlers
-    this.cy.on('tap', SELECTOR.Node, (evt) => {
-      const d = evt.target.data();
+    this.cytoscapeInstance.on('tap', SELECTOR.Node, (event: EventObject): void => {
+      const nodeData: NodeElementData = event.target.data() as NodeElementData;
       this.selectedElement.set({
-        type: d.type,
-        label: d.label,
-        role: d.fileRole,
-        filePath: d.filePath,
+        type: nodeData.type,
+        label: nodeData.label,
+        role: nodeData.fileRole,
+        filePath: nodeData.filePath,
       });
     });
 
-    this.cy.on('tap', SELECTOR.Edge, (evt) => {
-      const d = evt.target.data();
+    this.cytoscapeInstance.on('tap', SELECTOR.Edge, (event: EventObject): void => {
+      const edgeData: EdgeElementData = event.target.data() as EdgeElementData;
       this.selectedElement.set({
         type: RELATIONSHIP_ELEMENT_TYPE,
-        label: `${d.source}${EDGE_LABEL_SEPARATOR}${d.target}`,
-        role: d.relation,
-        target: d.target,
+        label: `${edgeData.source}${EDGE_LABEL_SEPARATOR}${edgeData.target}`,
+        role: edgeData.relation,
+        target: edgeData.target,
       });
     });
 
-    this.cy.on('tap', (evt) => {
-      if (evt.target === this.cy) {
+    this.cytoscapeInstance.on('tap', (event: EventObject): void => {
+      if (event.target === this.cytoscapeInstance) {
         this.selectedElement.set(null);
       }
     });
