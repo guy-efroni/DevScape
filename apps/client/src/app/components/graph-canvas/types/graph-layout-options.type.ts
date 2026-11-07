@@ -1,5 +1,5 @@
 import type { LayoutOptions } from 'cytoscape';
-import { RankDirection } from '../graph-canvas.constants';
+import type { RankDirection } from '../graph-canvas.constants';
 
 export type GraphLayoutOptions = LayoutOptions & {
   animate?: boolean;
@@ -7,5 +7,5 @@ export type GraphLayoutOptions = LayoutOptions & {
   nodeSep?: number;
   padding?: number;
   rankSep?: number;
-  rankDir?: (typeof RankDirection)[keyof typeof RankDirection];
+  rankDir?: RankDirection;
 };

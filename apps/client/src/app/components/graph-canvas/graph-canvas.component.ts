@@ -10,12 +10,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import cytoscape, {
-  CollectionReturnValue,
-  Core,
-  ElementDefinition,
-  EventObject,
-} from 'cytoscape';
+import cytoscape, { CollectionReturnValue, Core, ElementDefinition, EventObject } from 'cytoscape';
 import dagre from 'cytoscape-dagre';
 import {
   EdgeRelation,
@@ -28,11 +23,14 @@ import type { ICodeGraph, ICodeNode } from '@devscape/shared';
 import type { EdgeElementData } from './interfaces/edge-element-data.interface';
 import type { NodeElementData } from './interfaces/node-element-data.interface';
 import type { SelectedElement } from './interfaces/selected-element.interface';
+import { GraphColor } from './enums/graph-color.enum';
 import {
   CSS_CLASS,
   EDGE_LABEL_SEPARATOR,
   EXTERNAL_NODE_TYPE,
   FILE_LABEL_PREFIX,
+  GRAPH_LAYOUT,
+  GRAPH_STYLE,
   LayoutDirection,
   LayoutName,
   RankDirection,
@@ -44,7 +42,9 @@ import {
   nodeRoleSelector,
   nodeTypeSelector,
 } from './graph-canvas.constants';
+import type { LayoutDirection as LayoutDirectionType } from './types/layout-direction.type';
 import type { GraphLayoutOptions } from './types/graph-layout-options.type';
+import type { ViewFilter as ViewFilterType } from './types/view-filter.type';
 
 cytoscape.use(dagre);
 
@@ -56,126 +56,131 @@ cytoscape.use(dagre);
   styleUrl: './graph-canvas.component.scss',
 })
 export class GraphCanvasComponent implements OnChanges, OnDestroy {
-  @Input({ required: true }) graph!: ICodeGraph;
-  @ViewChild('cyContainer', { static: true }) cyContainer!: ElementRef<HTMLDivElement>;
+  @Input({ required: true }) public graph!: ICodeGraph;
+  @ViewChild('cyContainer', { static: true }) public cyContainer!: ElementRef<HTMLDivElement>;
 
-  private cytoscapeInstance: Core | null = null;
+  private _cytoscapeInstance: Core | null = null;
 
-  protected readonly viewFilter: WritableSignal<ViewFilter> = signal<ViewFilter>(ViewFilter.Architecture);
-  protected readonly activeLayout: WritableSignal<LayoutDirection> = signal<LayoutDirection>(
+  public readonly viewFilter: WritableSignal<ViewFilterType> = signal<ViewFilterType>(
+    ViewFilter.Architecture,
+  );
+  public readonly activeLayout: WritableSignal<LayoutDirectionType> = signal<LayoutDirectionType>(
     LayoutDirection.DagreLeftToRight,
   );
-  protected readonly showExternal: WritableSignal<boolean> = signal<boolean>(false);
-  protected readonly searchTerm: WritableSignal<string> = signal<string>('');
+  public readonly showExternal: WritableSignal<boolean> = signal<boolean>(false);
+  public readonly searchTerm: WritableSignal<string> = signal<string>('');
+  public readonly ViewFilter = ViewFilter;
+  public readonly LayoutDirection = LayoutDirection;
 
-  protected readonly ViewFilter = ViewFilter;
-  protected readonly LayoutDirection = LayoutDirection;
+  public readonly selectedElement: WritableSignal<SelectedElement | null> =
+    signal<SelectedElement | null>(null);
 
-  protected readonly selectedElement: WritableSignal<SelectedElement | null> = signal<SelectedElement | null>(null);
-
-  ngOnChanges(changes: SimpleChanges): void {
+  public ngOnChanges(changes: SimpleChanges): void {
     if (changes['graph'] && this.graph) {
-      this.renderGraph();
+      this._renderGraph();
     }
   }
 
-  ngOnDestroy(): void {
-    if (this.cytoscapeInstance) {
-      this.cytoscapeInstance.destroy();
-      this.cytoscapeInstance = null;
+  public ngOnDestroy(): void {
+    if (this._cytoscapeInstance) {
+      this._cytoscapeInstance.destroy();
+      this._cytoscapeInstance = null;
     }
   }
 
-  setViewFilter(filter: ViewFilter): void {
+  public setViewFilter(filter: ViewFilterType): void {
     this.viewFilter.set(filter);
-    this.renderGraph();
+    this._renderGraph();
   }
 
-  setLayout(layout: LayoutDirection): void {
+  public setLayout(layout: LayoutDirectionType): void {
     this.activeLayout.set(layout);
-    this.runLayout();
+    this._runLayout();
   }
 
-  toggleExternal(): void {
+  public toggleExternal(): void {
     this.showExternal.set(!this.showExternal());
-    this.renderGraph();
+    this._renderGraph();
   }
 
-  fitView(): void {
-    this.cytoscapeInstance?.fit(undefined, 50);
+  public fitView(): void {
+    this._cytoscapeInstance?.fit(undefined, GRAPH_LAYOUT.FitPadding);
   }
 
-  onSearchChange(term: string): void {
+  public onSearchChange(term: string): void {
     this.searchTerm.set(term);
-    if (!this.cytoscapeInstance) return;
+    if (!this._cytoscapeInstance) return;
 
-    this.cytoscapeInstance.batch((): void => {
+    this._cytoscapeInstance.batch((): void => {
       if (!term.trim()) {
-        this.cytoscapeInstance!.$(SELECTOR.All).removeClass(`${CSS_CLASS.Highlighted} ${CSS_CLASS.Dimmed}`);
+        this._cytoscapeInstance!.$(SELECTOR.All).removeClass(
+          `${CSS_CLASS.Highlighted} ${CSS_CLASS.Dimmed}`,
+        );
         return;
       }
 
       const normalizedSearchTerm: string = term.toLowerCase().trim();
-      const matchedNodes: CollectionReturnValue = this.cytoscapeInstance!.$(
+      const matchedNodes: CollectionReturnValue = this._cytoscapeInstance!.$(
         nodeLabelContainsSelector(normalizedSearchTerm),
       );
-      this.cytoscapeInstance!.$(SELECTOR.All).addClass(CSS_CLASS.Dimmed).removeClass(CSS_CLASS.Highlighted);
+      this._cytoscapeInstance!.$(SELECTOR.All)
+        .addClass(CSS_CLASS.Dimmed)
+        .removeClass(CSS_CLASS.Highlighted);
       matchedNodes.removeClass(CSS_CLASS.Dimmed).addClass(CSS_CLASS.Highlighted);
       matchedNodes.connectedEdges().removeClass(CSS_CLASS.Dimmed).addClass(CSS_CLASS.Highlighted);
     });
   }
 
-  private runLayout(): void {
-    if (!this.cytoscapeInstance) return;
+  private _runLayout(): void {
+    if (!this._cytoscapeInstance) return;
 
-    const selectedLayout: LayoutDirection = this.activeLayout();
+    const selectedLayout: LayoutDirectionType = this.activeLayout();
     let layoutOptions: GraphLayoutOptions;
 
     if (selectedLayout === LayoutDirection.DagreLeftToRight) {
       layoutOptions = {
         name: LayoutName.Dagre,
         rankDir: RankDirection.LeftToRight,
-        nodeSep: 60,
-        rankSep: 100,
+        nodeSep: GRAPH_LAYOUT.NodeSeparation,
+        rankSep: GRAPH_LAYOUT.RankSeparation,
         animate: true,
-        animationDuration: 500,
-        padding: 50,
+        animationDuration: GRAPH_LAYOUT.AnimationDurationMilliseconds,
+        padding: GRAPH_LAYOUT.FitPadding,
       };
     } else if (selectedLayout === LayoutDirection.DagreTopToBottom) {
       layoutOptions = {
         name: LayoutName.Dagre,
         rankDir: RankDirection.TopToBottom,
-        nodeSep: 60,
-        rankSep: 100,
+        nodeSep: GRAPH_LAYOUT.NodeSeparation,
+        rankSep: GRAPH_LAYOUT.RankSeparation,
         animate: true,
-        animationDuration: 500,
-        padding: 50,
+        animationDuration: GRAPH_LAYOUT.AnimationDurationMilliseconds,
+        padding: GRAPH_LAYOUT.FitPadding,
       };
     } else {
       layoutOptions = {
         name: LayoutName.Grid,
         animate: true,
-        animationDuration: 500,
-        padding: 50,
+        animationDuration: GRAPH_LAYOUT.AnimationDurationMilliseconds,
+        padding: GRAPH_LAYOUT.FitPadding,
       };
     }
 
-    this.cytoscapeInstance.layout(layoutOptions).run();
+    this._cytoscapeInstance.layout(layoutOptions).run();
   }
 
-  private renderGraph(): void {
-    if (this.cytoscapeInstance) {
-      this.cytoscapeInstance.destroy();
-      this.cytoscapeInstance = null;
+  private _renderGraph(): void {
+    if (this._cytoscapeInstance) {
+      this._cytoscapeInstance.destroy();
+      this._cytoscapeInstance = null;
     }
 
     const elements: ElementDefinition[] = [];
     const allowedNodeIds: Set<string> = new Set<string>();
 
-    const filter: ViewFilter = this.viewFilter();
+    const filter: ViewFilterType = this.viewFilter();
     const includeExternal: boolean = this.showExternal();
 
-    // Build comprehensive lookup indexes from the entire raw graph
     const nodeById: Map<string, ICodeNode> = new Map<string, ICodeNode>();
     const nodeByName: Map<string, ICodeNode> = new Map<string, ICodeNode>();
     const nodeByNormalizedFilePath: Map<string, ICodeNode> = new Map<string, ICodeNode>();
@@ -183,17 +188,22 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
     for (const node of this.graph.nodes) {
       nodeById.set(node.id, node);
       nodeByName.set(node.name, node);
-      const normalizedFilePath: string = node.filePath.replace(MODULE_EXTENSION_PATTERN, '').toLowerCase();
+      const normalizedFilePath: string = node.filePath
+        .replace(MODULE_EXTENSION_PATTERN, '')
+        .toLowerCase();
       nodeByNormalizedFilePath.set(normalizedFilePath, node);
     }
 
-    // 1. Filter Nodes based on selected view mode
     const filteredNodes: ICodeNode[] = this.graph.nodes.filter((node: ICodeNode): boolean => {
       if (filter === ViewFilter.FilesOnly) {
         return node.type === NodeType.File;
       }
       if (filter === ViewFilter.Architecture) {
-        return node.type === NodeType.File || node.type === NodeType.Class || node.type === NodeType.Interface;
+        return (
+          node.type === NodeType.File ||
+          node.type === NodeType.Class ||
+          node.type === NodeType.Interface
+        );
       }
       return true;
     });
@@ -212,30 +222,29 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       });
     }
 
-    // Helper to resolve an edge endpoint to a currently visible node ID
-    const resolveToVisibleNodeId: (rawEndpoint: string) => string | null = (rawEndpoint: string): string | null => {
-      // Direct match
+    const resolveToVisibleNodeId: (rawEndpoint: string) => string | null = (
+      rawEndpoint: string,
+    ): string | null => {
       if (allowedNodeIds.has(rawEndpoint)) return rawEndpoint;
 
-      // Match by exact node ID in full graph -> check if its parent file is visible
       const node: ICodeNode | undefined = nodeById.get(rawEndpoint);
       if (node && node.parent && allowedNodeIds.has(node.parent)) {
         return node.parent;
       }
 
-      // Match by symbol name
       const nodeWithMatchingName: ICodeNode | undefined = nodeByName.get(rawEndpoint);
       if (nodeWithMatchingName) {
         if (allowedNodeIds.has(nodeWithMatchingName.id)) return nodeWithMatchingName.id;
-        if (nodeWithMatchingName.parent && allowedNodeIds.has(nodeWithMatchingName.parent)) return nodeWithMatchingName.parent;
+        if (nodeWithMatchingName.parent && allowedNodeIds.has(nodeWithMatchingName.parent))
+          return nodeWithMatchingName.parent;
       }
 
-      // Match by normalized file path (e.g. `./app.service.js` or `app.service`)
       const normalizedEndpoint: string = rawEndpoint
         .replace(LEADING_RELATIVE_SEGMENT_PATTERN, '')
         .replace(MODULE_EXTENSION_PATTERN, '')
         .toLowerCase();
-      const nodeWithMatchingPath: ICodeNode | undefined = nodeByNormalizedFilePath.get(normalizedEndpoint);
+      const nodeWithMatchingPath: ICodeNode | undefined =
+        nodeByNormalizedFilePath.get(normalizedEndpoint);
       if (nodeWithMatchingPath && allowedNodeIds.has(nodeWithMatchingPath.id)) {
         return nodeWithMatchingPath.id;
       }
@@ -243,7 +252,6 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       return null;
     };
 
-    // 2. Filter & Add Edges
     let edgeIndex: number = 0;
     const addedEdgeKeys: Set<string> = new Set<string>();
 
@@ -251,9 +259,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       const resolvedSource: string | null = resolveToVisibleNodeId(edge.source);
       const resolvedTarget: string | null = resolveToVisibleNodeId(edge.target);
 
-      // A. Both endpoints resolve to visible nodes in current view
       if (resolvedSource && resolvedTarget) {
-        // Prevent self-loops unless desired
         if (resolvedSource === resolvedTarget) continue;
 
         const edgeKey: string = `${resolvedSource}->${resolvedTarget}:${edge.relation}`;
@@ -272,7 +278,6 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
         continue;
       }
 
-      // B. External library target (e.g. '@nestjs/common') when external toggle is ON
       if (includeExternal && resolvedSource && !resolvedTarget) {
         if (!allowedNodeIds.has(edge.target)) {
           allowedNodeIds.add(edge.target);
@@ -302,196 +307,189 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       }
     }
 
-    // 3. Initialize Cytoscape with visible relation arrows
-    this.cytoscapeInstance = cytoscape({
+    this._cytoscapeInstance = cytoscape({
       container: this.cyContainer.nativeElement,
       elements,
       style: [
         {
           selector: SELECTOR.Node,
           style: {
-            'label': 'data(label)',
+            label: 'data(label)',
             'font-family': 'Inter, system-ui, -apple-system, sans-serif',
-            'font-size': '11px',
-            'font-weight': 600,
-            'color': '#0f172a',
+            'font-size': GRAPH_STYLE.NodeFontSize,
+            'font-weight': GRAPH_STYLE.NodeFontWeight,
+            color: GraphColor.CanvasText,
             'text-valign': 'center',
             'text-halign': 'center',
-            'background-color': '#ffffff',
-            'border-width': 1.5,
-            'border-color': '#94a3b8',
-            'shape': 'round-rectangle',
+            'background-color': GraphColor.CanvasBackground,
+            'border-width': GRAPH_STYLE.NodeBorderWidth,
+            'border-color': GraphColor.NeutralBorder,
+            shape: 'round-rectangle',
             'corner-radius': '6px',
-            'width': 'label',
-            'height': 34,
-            'padding': '12px',
+            width: 'label',
+            height: GRAPH_STYLE.NodeHeight,
+            padding: GRAPH_STYLE.NodePadding,
           },
         },
 
-        // Role-based borders & tints for files
         {
           selector: nodeTypeSelector(NodeType.File),
           style: {
-            'background-color': '#f8fafc',
-            'border-color': '#64748b',
-            'font-weight': 700,
+            'background-color': GraphColor.FileBackground,
+            'border-color': GraphColor.FileBorder,
+            'font-weight': GRAPH_STYLE.FileFontWeight,
           },
         },
         {
           selector: nodeRoleSelector(FileRole.Controller),
           style: {
-            'background-color': '#faf5ff',
-            'border-color': '#a855f7',
-            'color': '#6b21a8',
+            'background-color': GraphColor.ControllerBackground,
+            'border-color': GraphColor.ControllerBorder,
+            color: GraphColor.ControllerText,
           },
         },
         {
           selector: nodeRoleSelector(FileRole.Service),
           style: {
-            'background-color': '#ecfeff',
-            'border-color': '#06b6d4',
-            'color': '#0e7490',
+            'background-color': GraphColor.ServiceBackground,
+            'border-color': GraphColor.ServiceBorder,
+            color: GraphColor.ServiceText,
           },
         },
         {
           selector: nodeRoleSelector(FileRole.Component),
           style: {
-            'background-color': '#eef2ff',
-            'border-color': '#6366f1',
-            'color': '#3730a3',
+            'background-color': GraphColor.ComponentBackground,
+            'border-color': GraphColor.ComponentBorder,
+            color: GraphColor.ComponentText,
           },
         },
         {
           selector: nodeRoleSelector(FileRole.Module),
           style: {
-            'background-color': '#f5f3ff',
-            'border-color': '#8b5cf6',
-            'color': '#5b21b6',
+            'background-color': GraphColor.ModuleBackground,
+            'border-color': GraphColor.ModuleBorder,
+            color: GraphColor.ModuleText,
           },
         },
 
-        // Classes & Interfaces
         {
           selector: nodeTypeSelector(NodeType.Class),
           style: {
-            'background-color': '#ecfdf5',
-            'border-color': '#10b981',
-            'color': '#065f46',
-            'border-width': 2,
+            'background-color': GraphColor.ClassBackground,
+            'border-color': GraphColor.ClassBorder,
+            color: GraphColor.ClassText,
+            'border-width': GRAPH_STYLE.ClassBorderWidth,
           },
         },
         {
           selector: nodeTypeSelector(NodeType.Interface),
           style: {
-            'background-color': '#fdf2f8',
-            'border-color': '#ec4899',
-            'color': '#9d174d',
+            'background-color': GraphColor.InterfaceBackground,
+            'border-color': GraphColor.InterfaceBorder,
+            color: GraphColor.InterfaceText,
             'border-style': 'dashed',
           },
         },
         {
           selector: nodeTypeSelector(NodeType.Function),
           style: {
-            'background-color': '#eff6ff',
-            'border-color': '#3b82f6',
-            'color': '#1e40af',
+            'background-color': GraphColor.FunctionBackground,
+            'border-color': GraphColor.FunctionBorder,
+            color: GraphColor.FunctionText,
           },
         },
         {
           selector: nodeTypeSelector(NodeType.Variable),
           style: {
-            'background-color': '#fffbeb',
-            'border-color': '#f59e0b',
-            'color': '#92400e',
+            'background-color': GraphColor.VariableBackground,
+            'border-color': GraphColor.VariableBorder,
+            color: GraphColor.VariableText,
           },
         },
         {
           selector: nodeTypeSelector(EXTERNAL_NODE_TYPE),
           style: {
-            'background-color': '#f1f5f9',
-            'border-color': '#cbd5e1',
-            'color': '#64748b',
+            'background-color': GraphColor.ExternalBackground,
+            'border-color': GraphColor.ExternalBorder,
+            color: GraphColor.ExternalText,
             'font-style': 'italic',
           },
         },
 
-        // ── Visible, Clear Directed Edges ──
         {
           selector: SELECTOR.Edge,
           style: {
-            'width': 2.5,
-            'line-color': '#64748b',
-            'target-arrow-color': '#64748b',
+            width: GRAPH_STYLE.EdgeWidth,
+            'line-color': GraphColor.Edge,
+            'target-arrow-color': GraphColor.Edge,
             'target-arrow-shape': 'triangle',
             'curve-style': 'bezier',
-            'arrow-scale': 1.1,
-            'label': 'data(relation)',
-            'font-size': '10px',
-            'font-weight': 600,
+            'arrow-scale': GRAPH_STYLE.EdgeArrowScale,
+            label: 'data(relation)',
+            'font-size': GRAPH_STYLE.EdgeFontSize,
+            'font-weight': GRAPH_STYLE.EdgeFontWeight,
             'text-rotation': 'autorotate',
-            'text-margin-y': -8,
-            'color': '#475569',
-            'text-background-color': '#ffffff',
-            'text-background-opacity': 0.95,
-            'text-background-padding': '2px',
+            'text-margin-y': GRAPH_STYLE.EdgeTextMarginY,
+            color: GraphColor.FileBorder,
+            'text-background-color': GraphColor.CanvasBackground,
+            'text-background-opacity': GRAPH_STYLE.EdgeTextBackgroundOpacity,
+            'text-background-padding': GRAPH_STYLE.EdgeTextBackgroundPadding,
           },
         },
         {
           selector: edgeRelationSelector(EdgeRelation.Imports),
           style: {
-            'line-color': '#8b5cf6',
-            'target-arrow-color': '#8b5cf6',
-            'color': '#7c3aed',
+            'line-color': GraphColor.Import,
+            'target-arrow-color': GraphColor.Import,
+            color: GraphColor.ImportText,
           },
         },
         {
           selector: edgeRelationSelector(EdgeRelation.Extends),
           style: {
-            'line-color': '#ec4899',
-            'target-arrow-color': '#ec4899',
+            'line-color': GraphColor.Extends,
+            'target-arrow-color': GraphColor.Extends,
             'line-style': 'dashed',
-            'color': '#db2777',
+            color: GraphColor.ExtendsText,
           },
         },
         {
           selector: edgeRelationSelector(EdgeRelation.Calls),
           style: {
-            'line-color': '#0284c7',
-            'target-arrow-color': '#0284c7',
-            'color': '#0369a1',
+            'line-color': GraphColor.Calls,
+            'target-arrow-color': GraphColor.Calls,
+            color: GraphColor.CallsText,
           },
         },
 
-        // ── Interaction: Highlight on Select/Hover ──
         {
           selector: SELECTOR.SelectedOrHighlightedNode,
           style: {
-            'border-width': 3,
-            'border-color': '#2563eb',
-            'opacity': 1,
+            'border-width': GRAPH_STYLE.SelectedNodeBorderWidth,
+            'border-color': GraphColor.Selection,
+            opacity: GRAPH_STYLE.SelectedNodeOpacity,
           },
         },
         {
           selector: SELECTOR.SelectedEdge,
           style: {
-            'width': 3.5,
-            'opacity': 1,
+            width: GRAPH_STYLE.SelectedEdgeWidth,
+            opacity: GRAPH_STYLE.SelectedEdgeOpacity,
           },
         },
         {
           selector: SELECTOR.Dimmed,
           style: {
-            'opacity': 0.12,
+            opacity: GRAPH_STYLE.DimmedOpacity,
           },
         },
       ],
     });
 
-    // Run the clean dagre layout
-    this.runLayout();
+    this._runLayout();
 
-    // Tap handlers
-    this.cytoscapeInstance.on('tap', SELECTOR.Node, (event: EventObject): void => {
+    this._cytoscapeInstance.on('tap', SELECTOR.Node, (event: EventObject): void => {
       const nodeData: NodeElementData = event.target.data() as NodeElementData;
       this.selectedElement.set({
         type: nodeData.type,
@@ -501,7 +499,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       });
     });
 
-    this.cytoscapeInstance.on('tap', SELECTOR.Edge, (event: EventObject): void => {
+    this._cytoscapeInstance.on('tap', SELECTOR.Edge, (event: EventObject): void => {
       const edgeData: EdgeElementData = event.target.data() as EdgeElementData;
       this.selectedElement.set({
         type: RELATIONSHIP_ELEMENT_TYPE,
@@ -511,8 +509,8 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       });
     });
 
-    this.cytoscapeInstance.on('tap', (event: EventObject): void => {
-      if (event.target === this.cytoscapeInstance) {
+    this._cytoscapeInstance.on('tap', (event: EventObject): void => {
+      if (event.target === this._cytoscapeInstance) {
         this.selectedElement.set(null);
       }
     });
