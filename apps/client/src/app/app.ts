@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { CodeGraphService } from './services/code-graph.service';
 import { GraphCanvasComponent } from './components/graph-canvas/graph-canvas.component';
 import type { ICodeGraph } from '@devscape/shared';
+import { UNKNOWN_ERROR_MESSAGE, ViewMode } from './app.constants';
 
 @Component({
   imports: [FormsModule, GraphCanvasComponent],
@@ -17,7 +18,8 @@ export class App {
   protected readonly graph = signal<ICodeGraph | null>(null);
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
-  protected readonly viewMode = signal<'graph' | 'table'>('graph');
+  protected readonly viewMode = signal<ViewMode>(ViewMode.Graph);
+  protected readonly ViewMode = ViewMode;
   protected readonly tableFilter = signal('');
 
   protected readonly presets = [
@@ -45,7 +47,7 @@ export class App {
         this.loading.set(false);
       },
       error: (err) => {
-        this.error.set(err?.error?.message ?? err?.message ?? 'Unknown error');
+        this.error.set(err?.error?.message ?? err?.message ?? UNKNOWN_ERROR_MESSAGE);
         this.loading.set(false);
       },
     });

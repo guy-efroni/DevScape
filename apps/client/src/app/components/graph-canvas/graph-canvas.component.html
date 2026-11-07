@@ -6,24 +6,24 @@
       <button
         type="button"
         class="mode-btn"
-        [class.active]="viewFilter() === 'architecture'"
-        (click)="setViewFilter('architecture')"
+        [class.active]="viewFilter() === ViewFilter.Architecture"
+        (click)="setViewFilter(ViewFilter.Architecture)"
       >
         🏛️ Architecture (Clean)
       </button>
       <button
         type="button"
         class="mode-btn"
-        [class.active]="viewFilter() === 'files-only'"
-        (click)="setViewFilter('files-only')"
+        [class.active]="viewFilter() === ViewFilter.FilesOnly"
+        (click)="setViewFilter(ViewFilter.FilesOnly)"
       >
         📁 Files Only
       </button>
       <button
         type="button"
         class="mode-btn"
-        [class.active]="viewFilter() === 'all'"
-        (click)="setViewFilter('all')"
+        [class.active]="viewFilter() === ViewFilter.All"
+        (click)="setViewFilter(ViewFilter.All)"
       >
         🔬 All Symbols
       </button>
@@ -34,8 +34,8 @@
       <button
         type="button"
         class="layout-btn"
-        [class.active]="activeLayout() === 'dagre-lr'"
-        (click)="setLayout('dagre-lr')"
+        [class.active]="activeLayout() === LayoutDirection.DagreLeftToRight"
+        (click)="setLayout(LayoutDirection.DagreLeftToRight)"
         title="Left to Right Layered Flow"
       >
         Horizontal (L ➔ R)
@@ -43,8 +43,8 @@
       <button
         type="button"
         class="layout-btn"
-        [class.active]="activeLayout() === 'dagre-tb'"
-        (click)="setLayout('dagre-tb')"
+        [class.active]="activeLayout() === LayoutDirection.DagreTopToBottom"
+        (click)="setLayout(LayoutDirection.DagreTopToBottom)"
         title="Top to Bottom Flow"
       >
         Vertical (T ➔ B)
@@ -52,8 +52,8 @@
       <button
         type="button"
         class="layout-btn"
-        [class.active]="activeLayout() === 'grid'"
-        (click)="setLayout('grid')"
+        [class.active]="activeLayout() === LayoutDirection.Grid"
+        (click)="setLayout(LayoutDirection.Grid)"
         title="Clean Grid"
       >
         ▦ Grid

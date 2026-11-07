@@ -15,10 +15,7 @@ Once the server is running, open your browser and navigate to `http://localhost:
 ## Code scaffolding
 
 Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
+ng generate component component-name
 
 For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
 
@@ -57,3 +54,5 @@ Angular CLI does not come with an end-to-end testing framework by default. You c
 ## Additional Resources
 
 For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+
+**Note:** The graph canvas now draws from shared constants (`packages/shared`) for view filters, layouts, node/edge selectors and CSS classes instead of inline string literals. Node types and edge relations are defined as `as const` enums in `@devscape/shared` and imported as types at runtime.

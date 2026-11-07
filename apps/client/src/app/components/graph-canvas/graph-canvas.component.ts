@@ -11,13 +11,33 @@ import {
 import { FormsModule } from '@angular/forms';
 import cytoscape, { Core, ElementDefinition } from 'cytoscape';
 import dagre from 'cytoscape-dagre';
+import {
+  EdgeRelation,
+  FileRole,
+  LEADING_RELATIVE_SEGMENT_PATTERN,
+  MODULE_EXTENSION_PATTERN,
+  NodeType,
+} from '@devscape/shared';
 import type { ICodeGraph, ICodeNode } from '@devscape/shared';
+import {
+  CSS_CLASS,
+  EDGE_LABEL_SEPARATOR,
+  EXTERNAL_NODE_TYPE,
+  FILE_LABEL_PREFIX,
+  LayoutDirection,
+  LayoutName,
+  RankDirection,
+  RELATIONSHIP_ELEMENT_TYPE,
+  SELECTOR,
+  ViewFilter,
+  edgeRelationSelector,
+  nodeLabelContainsSelector,
+  nodeRoleSelector,
+  nodeTypeSelector,
+} from './graph-canvas.constants';
 
 // Register dagre layout plugin with cytoscape
 cytoscape.use(dagre);
-
-type ViewFilter = 'architecture' | 'files-only' | 'all';
-type LayoutDirection = 'dagre-lr' | 'dagre-tb' | 'grid';
 
 @Component({
   selector: 'app-graph-canvas',
@@ -32,10 +52,13 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
 
   private cy: Core | null = null;
 
-  protected viewFilter = signal<ViewFilter>('architecture');
-  protected activeLayout = signal<LayoutDirection>('dagre-lr');
+  protected viewFilter = signal<ViewFilter>(ViewFilter.Architecture);
+  protected activeLayout = signal<LayoutDirection>(LayoutDirection.DagreLeftToRight);
   protected showExternal = signal(false);
   protected searchTerm = signal('');
+
+  protected readonly ViewFilter = ViewFilter;
+  protected readonly LayoutDirection = LayoutDirection;
 
   protected selectedElement = signal<{
     type: string;
@@ -83,15 +106,15 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
 
     this.cy.batch(() => {
       if (!term.trim()) {
-        this.cy!.$('node, edge').removeClass('highlighted dimmed');
+        this.cy!.$(SELECTOR.All).removeClass(`${CSS_CLASS.Highlighted} ${CSS_CLASS.Dimmed}`);
         return;
       }
 
       const q = term.toLowerCase().trim();
-      const matchedNodes = this.cy!.$(`node[label *= "${q}"]`);
-      this.cy!.$('node, edge').addClass('dimmed').removeClass('highlighted');
-      matchedNodes.removeClass('dimmed').addClass('highlighted');
-      matchedNodes.connectedEdges().removeClass('dimmed').addClass('highlighted');
+      const matchedNodes = this.cy!.$(nodeLabelContainsSelector(q));
+      this.cy!.$(SELECTOR.All).addClass(CSS_CLASS.Dimmed).removeClass(CSS_CLASS.Highlighted);
+      matchedNodes.removeClass(CSS_CLASS.Dimmed).addClass(CSS_CLASS.Highlighted);
+      matchedNodes.connectedEdges().removeClass(CSS_CLASS.Dimmed).addClass(CSS_CLASS.Highlighted);
     });
   }
 
@@ -101,20 +124,20 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
     const layoutName = this.activeLayout();
     let config: any;
 
-    if (layoutName === 'dagre-lr') {
+    if (layoutName === LayoutDirection.DagreLeftToRight) {
       config = {
-        name: 'dagre',
-        rankDir: 'LR',
+        name: LayoutName.Dagre,
+        rankDir: RankDirection.LeftToRight,
         nodeSep: 60,
         rankSep: 100,
         animate: true,
         animationDuration: 500,
         padding: 50,
       };
-    } else if (layoutName === 'dagre-tb') {
+    } else if (layoutName === LayoutDirection.DagreTopToBottom) {
       config = {
-        name: 'dagre',
-        rankDir: 'TB',
+        name: LayoutName.Dagre,
+        rankDir: RankDirection.TopToBottom,
         nodeSep: 60,
         rankSep: 100,
         animate: true,
@@ -123,7 +146,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       };
     } else {
       config = {
-        name: 'grid',
+        name: LayoutName.Grid,
         animate: true,
         animationDuration: 500,
         padding: 50,
@@ -153,17 +176,17 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
     for (const node of this.graph.nodes) {
       nodeById.set(node.id, node);
       nodeByName.set(node.name, node);
-      const norm = node.filePath.replace(/\.(js|mjs|ts)$/, '').toLowerCase();
+      const norm = node.filePath.replace(MODULE_EXTENSION_PATTERN, '').toLowerCase();
       nodeByNormPath.set(norm, node);
     }
 
     // 1. Filter Nodes based on selected view mode
     const filteredNodes = this.graph.nodes.filter((node) => {
-      if (filter === 'files-only') {
-        return node.type === 'file';
+      if (filter === ViewFilter.FilesOnly) {
+        return node.type === NodeType.File;
       }
-      if (filter === 'architecture') {
-        return node.type === 'file' || node.type === 'class' || node.type === 'interface';
+      if (filter === ViewFilter.Architecture) {
+        return node.type === NodeType.File || node.type === NodeType.Class || node.type === NodeType.Interface;
       }
       return true;
     });
@@ -174,7 +197,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
         group: 'nodes',
         data: {
           id: node.id,
-          label: node.type === 'file' ? `📄 ${node.name}` : node.name,
+          label: node.type === NodeType.File ? `${FILE_LABEL_PREFIX}${node.name}` : node.name,
           type: node.type,
           fileRole: node.fileRole,
           filePath: node.filePath,
@@ -201,7 +224,10 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       }
 
       // Match by normalized file path (e.g. `./app.service.js` or `app.service`)
-      const cleaned = rawEndpoint.replace(/^(\.\/|\.\.\/)+/, '').replace(/\.(js|mjs|ts)$/, '').toLowerCase();
+      const cleaned = rawEndpoint
+        .replace(LEADING_RELATIVE_SEGMENT_PATTERN, '')
+        .replace(MODULE_EXTENSION_PATTERN, '')
+        .toLowerCase();
       const byNorm = nodeByNormPath.get(cleaned);
       if (byNorm && allowedNodeIds.has(byNorm.id)) {
         return byNorm.id;
@@ -248,7 +274,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
             data: {
               id: edge.target,
               label: edge.target,
-              type: 'external',
+              type: EXTERNAL_NODE_TYPE,
             },
           });
         }
@@ -276,7 +302,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       style: [
         // ── Clean Card Nodes ──
         {
-          selector: 'node',
+          selector: SELECTOR.Node,
           style: {
             'label': 'data(label)',
             'font-family': 'Inter, system-ui, -apple-system, sans-serif',
@@ -298,7 +324,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
 
         // Role-based borders & tints for files
         {
-          selector: 'node[type = "file"]',
+          selector: nodeTypeSelector(NodeType.File),
           style: {
             'background-color': '#f8fafc',
             'border-color': '#64748b',
@@ -306,7 +332,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           },
         },
         {
-          selector: 'node[fileRole = "controller"]',
+          selector: nodeRoleSelector(FileRole.Controller),
           style: {
             'background-color': '#faf5ff',
             'border-color': '#a855f7',
@@ -314,7 +340,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           },
         },
         {
-          selector: 'node[fileRole = "service"]',
+          selector: nodeRoleSelector(FileRole.Service),
           style: {
             'background-color': '#ecfeff',
             'border-color': '#06b6d4',
@@ -322,7 +348,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           },
         },
         {
-          selector: 'node[fileRole = "component"]',
+          selector: nodeRoleSelector(FileRole.Component),
           style: {
             'background-color': '#eef2ff',
             'border-color': '#6366f1',
@@ -330,7 +356,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           },
         },
         {
-          selector: 'node[fileRole = "module"]',
+          selector: nodeRoleSelector(FileRole.Module),
           style: {
             'background-color': '#f5f3ff',
             'border-color': '#8b5cf6',
@@ -340,7 +366,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
 
         // Classes & Interfaces
         {
-          selector: 'node[type = "class"]',
+          selector: nodeTypeSelector(NodeType.Class),
           style: {
             'background-color': '#ecfdf5',
             'border-color': '#10b981',
@@ -349,7 +375,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           },
         },
         {
-          selector: 'node[type = "interface"]',
+          selector: nodeTypeSelector(NodeType.Interface),
           style: {
             'background-color': '#fdf2f8',
             'border-color': '#ec4899',
@@ -358,7 +384,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           },
         },
         {
-          selector: 'node[type = "function"]',
+          selector: nodeTypeSelector(NodeType.Function),
           style: {
             'background-color': '#eff6ff',
             'border-color': '#3b82f6',
@@ -366,7 +392,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           },
         },
         {
-          selector: 'node[type = "variable"]',
+          selector: nodeTypeSelector(NodeType.Variable),
           style: {
             'background-color': '#fffbeb',
             'border-color': '#f59e0b',
@@ -374,7 +400,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           },
         },
         {
-          selector: 'node[type = "external"]',
+          selector: nodeTypeSelector(EXTERNAL_NODE_TYPE),
           style: {
             'background-color': '#f1f5f9',
             'border-color': '#cbd5e1',
@@ -385,7 +411,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
 
         // ── Visible, Clear Directed Edges ──
         {
-          selector: 'edge',
+          selector: SELECTOR.Edge,
           style: {
             'width': 2.5,
             'line-color': '#64748b',
@@ -405,7 +431,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           },
         },
         {
-          selector: 'edge[relation = "imports"]',
+          selector: edgeRelationSelector(EdgeRelation.Imports),
           style: {
             'line-color': '#8b5cf6',
             'target-arrow-color': '#8b5cf6',
@@ -413,7 +439,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           },
         },
         {
-          selector: 'edge[relation = "extends"]',
+          selector: edgeRelationSelector(EdgeRelation.Extends),
           style: {
             'line-color': '#ec4899',
             'target-arrow-color': '#ec4899',
@@ -422,7 +448,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           },
         },
         {
-          selector: 'edge[relation = "calls"]',
+          selector: edgeRelationSelector(EdgeRelation.Calls),
           style: {
             'line-color': '#0284c7',
             'target-arrow-color': '#0284c7',
@@ -432,7 +458,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
 
         // ── Interaction: Highlight on Select/Hover ──
         {
-          selector: 'node:selected, node.highlighted',
+          selector: SELECTOR.SelectedOrHighlightedNode,
           style: {
             'border-width': 3,
             'border-color': '#2563eb',
@@ -440,14 +466,14 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           },
         },
         {
-          selector: 'edge:selected',
+          selector: SELECTOR.SelectedEdge,
           style: {
             'width': 3.5,
             'opacity': 1,
           },
         },
         {
-          selector: 'node.dimmed, edge.dimmed',
+          selector: SELECTOR.Dimmed,
           style: {
             'opacity': 0.12,
           },
@@ -459,7 +485,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
     this.runLayout();
 
     // Tap handlers
-    this.cy.on('tap', 'node', (evt) => {
+    this.cy.on('tap', SELECTOR.Node, (evt) => {
       const d = evt.target.data();
       this.selectedElement.set({
         type: d.type,
@@ -469,11 +495,11 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       });
     });
 
-    this.cy.on('tap', 'edge', (evt) => {
+    this.cy.on('tap', SELECTOR.Edge, (evt) => {
       const d = evt.target.data();
       this.selectedElement.set({
-        type: 'relationship',
-        label: `${d.source} ➔ ${d.target}`,
+        type: RELATIONSHIP_ELEMENT_TYPE,
+        label: `${d.source}${EDGE_LABEL_SEPARATOR}${d.target}`,
         role: d.relation,
         target: d.target,
       });
