@@ -1,171 +1,182 @@
 .results {
-  margin-top: 1.5rem;
+  max-width: 1540px;
+  margin: 18px auto 0;
+}
 
-  .results-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
+.results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
 
-  .stats-pills {
-    display: flex;
-    gap: 8px;
-  }
+.stats-pills {
+  display: flex;
+  gap: 8px;
+}
 
-  .stat-badge {
-    background: #e2e8f0;
-    padding: 4px 12px;
-    border-radius: 999px;
-    font-size: 0.82rem;
-    color: #334155;
-    font-weight: 500;
+.stat-badge {
+  padding: 5px 10px;
+  border: 1px solid #27272a;
+  border-radius: 999px;
+  color: #71717a;
+  background: #18181b;
+  font: 0.68rem "Cascadia Code", monospace;
+}
 
-    strong {
-      color: #0f172a;
-      font-weight: 700;
-    }
-  }
+.stat-badge strong {
+  color: #d4d4d8;
+}
 
-  .view-toggle {
-    display: inline-flex;
-    background: #e2e8f0;
-    border-radius: 8px;
-    padding: 2px;
-    gap: 2px;
+.view-toggle {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid #27272a;
+  border-radius: 8px;
+  background: #18181b;
+}
 
-    button {
-      padding: 6px 14px;
-      font-size: 0.82rem;
-      font-weight: 600;
-      border: none;
-      background: transparent;
-      border-radius: 6px;
-      color: #475569;
-      cursor: pointer;
-      transition: all 0.15s;
+.view-toggle button {
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 6px;
+  color: #71717a;
+  background: transparent;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
 
-      &.active {
-        background: #ffffff;
-        color: #0f172a;
-        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1);
-      }
-    }
-  }
+.view-toggle button:hover,
+.view-toggle button.active {
+  color: #f4f4f5;
+  background: #27272a;
+  box-shadow: 0 0 0 1px #3f3f46;
 }
 
 .table-toolbar {
-  margin: 1rem 0;
+  margin: 12px 0;
+}
 
-  .table-search-input {
-    width: 100%;
-    max-width: 340px;
-    padding: 7px 12px;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    font-size: 0.85rem;
-    outline: none;
+.table-search-input {
+  width: 100%;
+  max-width: 340px;
+  padding: 8px 11px;
+  border: 1px solid #27272a;
+  border-radius: 6px;
+  outline: 0;
+  color: #d4d4d8;
+  background: #18181b;
+  font: 0.76rem "Cascadia Code", monospace;
+}
 
-    &:focus {
-      border-color: #6366f1;
-    }
-  }
+.table-search-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
 }
 
 h3 {
-  font-size: 1.05rem;
+  margin: 18px 0 7px;
+  color: #e4e4e7;
+  font-size: 0.82rem;
   font-weight: 700;
-  margin: 1.5rem 0 0.5rem;
-  color: #1e293b;
 }
 
 .table-wrap {
   overflow-x: auto;
-  border: 1px solid #e2e8f0;
+  margin-bottom: 18px;
+  border: 1px solid #27272a;
   border-radius: 8px;
-  background: #ffffff;
-  margin-bottom: 1.5rem;
+  background: #18181b;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
+}
 
-  th, td {
-    text-align: left;
-    padding: 0.65rem 0.95rem;
-    border-bottom: 1px solid #f1f5f9;
-  }
+th,
+td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #27272a;
+  text-align: left;
+}
 
-  th {
-    background: #f8fafc;
-    font-weight: 700;
-    color: #475569;
-    font-size: 0.78rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
+th {
+  color: #71717a;
+  background: #18181b;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 
-  tbody tr:last-child td {
-    border-bottom: none;
-  }
+td {
+  color: #a1a1aa;
+}
 
-  tbody tr:hover {
-    background: #f8fafc;
-  }
+tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+tbody tr:hover {
+  background: #27272a;
 }
 
 .mono {
-  font-family: 'Cascadia Code', 'Fira Code', monospace;
-  font-size: 0.82rem;
+  font-family: "Cascadia Code", "Fira Code", monospace;
+  font-size: 0.72rem;
 }
 
 .font-bold {
+  color: #f4f4f5;
   font-weight: 600;
-  color: #0f172a;
 }
 
 .file-path {
-  color: #64748b;
+  color: #71717a;
 }
 
 .text-muted {
-  color: #cbd5e1;
+  color: #52525b;
 }
 
 .badge {
   display: inline-block;
-  padding: 0.15rem 0.55rem;
+  padding: 3px 7px;
   border-radius: 999px;
-  font-size: 0.72rem;
+  font-size: 0.62rem;
   font-weight: 700;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-
-  &[data-type='file'] { background: #f3e8ff; color: #7e22ce; }
-  &[data-type='class'] { background: #dcfce7; color: #15803d; }
-  &[data-type='function'] { background: #dbeafe; color: #1d4ed8; }
-  &[data-type='interface'] { background: #fce7f3; color: #be185d; }
-  &[data-type='variable'] { background: #fef3c7; color: #b45309; }
-
-  &.relation {
-    &[data-relation='imports'] { background: #f3e8ff; color: #7e22ce; }
-    &[data-relation='extends'] { background: #fce7f3; color: #be185d; }
-    &[data-relation='calls'] { background: #dbeafe; color: #1d4ed8; }
-  }
 }
+
+.badge[data-type="file"] { color: #c4b5fd; background: #27272a; }
+.badge[data-type="class"] { color: #86efac; background: #052e16; }
+.badge[data-type="function"] { color: #93c5fd; background: #172554; }
+.badge[data-type="interface"] { color: #f9a8d4; background: #500724; }
+.badge[data-type="variable"] { color: #fcd34d; background: #451a03; }
+.badge.relation[data-relation="imports"] { color: #c4b5fd; background: #27272a; }
+.badge.relation[data-relation="extends"] { color: #f9a8d4; background: #500724; }
+.badge.relation[data-relation="calls"] { color: #93c5fd; background: #172554; }
 
 .role-badge {
   display: inline-block;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
-  padding: 1px 7px;
+  padding: 2px 7px;
+  border: 1px solid #3f3f46;
   border-radius: 4px;
-  font-size: 0.75rem;
+  color: #a1a1aa;
+  background: #27272a;
+  font-size: 0.62rem;
   font-weight: 600;
   text-transform: uppercase;
-  color: #475569;
+}
+
+@media (max-width: 640px) {
+  .results-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }

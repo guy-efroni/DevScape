@@ -1,67 +1,49 @@
-<main class="container">
-  <!-- Brand Navbar Header -->
+<main class="app-shell">
   <header class="navbar">
     <div class="brand">
-      <span class="brand-icon">🔬</span>
+      <span class="brand-icon" aria-hidden="true">⌘</span>
       <div class="brand-text">
         <h1>DevScape</h1>
-        <span class="brand-tagline">AST Architecture Explorer</span>
+        <span class="brand-tagline">local-first code intelligence</span>
       </div>
     </div>
-    <div class="nav-meta">
-      <span class="status-indicator">
-        <span class="status-dot"></span> Local-first
-      </span>
-      <span class="version-tag">v0.1.0</span>
+
+    <form class="path-control" (ngSubmit)="onSubmit()">
+      <span class="path-icon">⌁</span>
+      <input
+        id="dirPath"
+        type="text"
+        placeholder="/Users/dev/projects/my-app"
+        [ngModel]="directoryPath()"
+        (ngModelChange)="directoryPath.set($event)"
+        name="directoryPath"
+        aria-label="Project directory path"
+      />
+      <button type="submit" [disabled]="loading() || !directoryPath().trim()" title="Parse directory">
+        {{ loading() ? 'Parsing…' : '↵' }}
+      </button>
+    </form>
+
+    <div class="global-search" role="search">
+      <span class="search-icon">⌕</span>
+      <input type="search" placeholder="Search nodes, files, relations..." aria-label="Search graph" />
+      <kbd>Ctrl K</kbd>
+    </div>
+
+    <div class="nav-actions">
+      <button class="nav-action" type="button" (click)="onSubmit()" [disabled]="loading()" title="Rescan directory">
+        <span>↻</span> Rescan
+      </button>
+      <button class="nav-action" type="button" title="Export graph as PNG">
+        <span>⇩</span> Export PNG
+      </button>
+      <button class="icon-action" type="button" title="Settings" aria-label="Settings">⚙</button>
     </div>
   </header>
 
-  <!-- Input Section -->
-  <section class="card input-card">
-    <form (ngSubmit)="onSubmit()">
-      <div class="input-header">
-        <label for="dirPath">Project Directory Path</label>
-        <span class="input-hint">Relative or absolute path on your local filesystem</span>
-      </div>
-
-      <div class="input-row">
-        <input
-          id="dirPath"
-          type="text"
-          placeholder="e.g. apps/server/src or C:\dev\my-app\src"
-          [ngModel]="directoryPath()"
-          (ngModelChange)="directoryPath.set($event)"
-          name="directoryPath"
-        />
-        <button type="submit" [disabled]="loading() || !directoryPath().trim()">
-          @if (loading()) {
-            <span class="spinner"></span> Parsing AST…
-          } @else {
-            <span>⚡ Parse Codebase</span>
-          }
-        </button>
-      </div>
-
-      <!-- Quick Preset Chips -->
-      <div class="preset-row">
-        <span class="preset-label">Quick Presets:</span>
-        @for (preset of presets; track preset.path) {
-          <button
-            type="button"
-            class="chip-btn"
-            (click)="selectPreset(preset.path)"
-          >
-            📁 {{ preset.label }}
-          </button>
-        }
-      </div>
-    </form>
-  </section>
-
-  <!-- Error Banner -->
   @if (error(); as err) {
     <section class="error-banner">
-      <span class="error-icon">⚠️</span>
+      <span class="error-icon">!</span>
       <div class="error-content">
         <strong>Parsing Failed</strong>
         <p>{{ err }}</p>
@@ -69,31 +51,38 @@
     </section>
   }
 
-  <!-- Welcome / Empty State -->
   @if (!graph() && !loading()) {
-    <section class="card welcome-card">
-      <div class="welcome-icon">🗺️</div>
-      <h2>Visualize Your Codebase Architecture</h2>
+    <section class="welcome-card">
+      <div class="welcome-icon">⌘</div>
+      <p class="eyebrow">CODEBASE GRAPH VISUALIZER</p>
+      <h2>See how your code fits together.</h2>
       <p>
-        Select one of the quick presets above or enter a directory path to extract classes, interfaces,
-        functions, and module dependencies into an interactive compound graph.
+        Point DevScape at a local TypeScript project to map files, symbols, and relationships in an interactive graph.
       </p>
+
+      <div class="preset-row">
+        @for (preset of presets; track preset.path) {
+          <button type="button" class="chip-btn" (click)="selectPreset(preset.path)">
+            {{ preset.label }}
+          </button>
+        }
+      </div>
 
       <div class="feature-grid">
         <div class="feature-card">
-          <span class="f-icon">📦</span>
-          <h4>Compound File Cards</h4>
-          <p>Files render as visual container cards with specific architectural roles.</p>
+          <span class="f-icon">◈</span>
+          <h4>AST-aware graph</h4>
+          <p>Classes, interfaces, functions, and imports become navigable nodes.</p>
         </div>
         <div class="feature-card">
-          <span class="f-icon">⚡</span>
-          <h4>TypeScript Compiler AST</h4>
-          <p>Deep syntax analysis extracts classes, interfaces, and function calls.</p>
+          <span class="f-icon">⌁</span>
+          <h4>Runs locally</h4>
+          <p>Your source stays on your machine while the graph is generated.</p>
         </div>
         <div class="feature-card">
-          <span class="f-icon">🎯</span>
-          <h4>Multiple Layouts</h4>
-          <p>Switch between Force-Directed physics, Hierarchical trees, and Grids.</p>
+          <span class="f-icon">✦</span>
+          <h4>Built to explore</h4>
+          <p>Zoom, pan, filter, and inspect relationships without losing context.</p>
         </div>
       </div>
     </section>
