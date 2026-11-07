@@ -1,12 +1,12 @@
 import { Component, inject, signal, WritableSignal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CodeGraphService } from './services/code-graph.service';
-import { GraphCanvasComponent } from './components/graph-canvas/graph-canvas.component';
 import type { ICodeGraph } from '@devscape/shared';
-import { UNKNOWN_ERROR_MESSAGE, ViewMode } from './app.constants';
+import { CodeGraphService } from './services/code-graph.service';
+import { GraphResultsComponent } from './components/graph-results/graph-results.component';
+import { UNKNOWN_ERROR_MESSAGE } from './app.constants';
 
 @Component({
-  imports: [FormsModule, GraphCanvasComponent],
+  imports: [FormsModule, GraphResultsComponent],
   selector: 'app-root',
   styleUrl: './app.scss',
   templateUrl: './app.html',
@@ -18,9 +18,6 @@ export class App {
   protected readonly graph: WritableSignal<ICodeGraph | null> = signal<ICodeGraph | null>(null);
   protected readonly loading: WritableSignal<boolean> = signal<boolean>(false);
   protected readonly error: WritableSignal<string | null> = signal<string | null>(null);
-  protected readonly viewMode: WritableSignal<ViewMode> = signal<ViewMode>(ViewMode.Graph);
-  protected readonly ViewMode = ViewMode;
-  protected readonly tableFilter: WritableSignal<string> = signal<string>('');
 
   protected readonly presets: ReadonlyArray<{ label: string; path: string }> = [
     { label: 'Server Source', path: 'apps/server/src' },
@@ -51,29 +48,6 @@ export class App {
         this.loading.set(false);
       },
     });
-  }
-
-  protected filteredNodes(nodes: ICodeGraph['nodes']): ICodeGraph['nodes'] {
-    const normalizedFilter = this.tableFilter().toLowerCase().trim();
-    if (!normalizedFilter) return nodes;
-    return nodes.filter(
-      (node) =>
-        node.name.toLowerCase().includes(normalizedFilter) ||
-        node.type.toLowerCase().includes(normalizedFilter) ||
-        node.filePath.toLowerCase().includes(normalizedFilter) ||
-        (node.fileRole && node.fileRole.toLowerCase().includes(normalizedFilter)),
-    );
-  }
-
-  protected filteredEdges(edges: ICodeGraph['edges']): ICodeGraph['edges'] {
-    const normalizedFilter = this.tableFilter().toLowerCase().trim();
-    if (!normalizedFilter) return edges;
-    return edges.filter(
-      (edge) =>
-        edge.source.toLowerCase().includes(normalizedFilter) ||
-        edge.target.toLowerCase().includes(normalizedFilter) ||
-        edge.relation.toLowerCase().includes(normalizedFilter),
-    );
   }
 
   private getErrorMessage(error: unknown): string {
