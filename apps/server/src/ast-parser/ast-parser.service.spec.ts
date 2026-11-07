@@ -32,6 +32,55 @@ describe('AstParserService', (): void => {
     expect(result).toEqual({ nodes: [], edges: [] });
   });
 
+  it('should parse an empty TypeScript file without compiler errors', (): void => {
+    fs.writeFileSync(path.join(tempDir, 'empty.ts'), '');
+
+    const result: ICodeGraph = service.parseDirectory(tempDir);
+
+    expect(result.nodes).toContainEqual(
+      expect.objectContaining({
+        id: 'empty.ts',
+        type: 'file',
+        filePath: 'empty.ts',
+      }),
+    );
+    expect(result.edges).toEqual([]);
+  });
+
+  it('should parse circular imports without filesystem or compiler errors', (): void => {
+    fs.writeFileSync(
+      path.join(tempDir, 'first.ts'),
+      "import { second } from './second.js';\nexport const first = second;",
+    );
+    fs.writeFileSync(
+      path.join(tempDir, 'second.ts'),
+      "import { first } from './first.js';\nexport const second = first;",
+    );
+
+    const result: ICodeGraph = service.parseDirectory(tempDir);
+
+    expect(result.nodes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'first.ts', type: 'file' }),
+        expect.objectContaining({ id: 'second.ts', type: 'file' }),
+      ]),
+    );
+    expect(result.edges).toEqual(
+      expect.arrayContaining([
+        {
+          source: 'first.ts',
+          target: 'second.ts',
+          relation: 'imports',
+        },
+        {
+          source: 'second.ts',
+          target: 'first.ts',
+          relation: 'imports',
+        },
+      ]),
+    );
+  });
+
   it('should parse local TypeScript files into nodes and import edges', (): void => {
     fs.writeFileSync(
       path.join(tempDir, 'entry.ts'),
