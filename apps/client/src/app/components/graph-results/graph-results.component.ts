@@ -18,7 +18,7 @@ export class GraphResultsComponent {
   public readonly ViewMode: typeof ViewMode = ViewMode;
   public readonly tableFilter: WritableSignal<string> = signal<string>('');
 
-  public filteredNodes(nodes: ICodeGraph['nodes']): ICodeGraph['nodes'] {
+  public filteredNodes(nodes: ICodeNode[]): ICodeNode[] {
     const normalizedFilter: string = this.tableFilter().toLowerCase().trim();
     if (!normalizedFilter) return nodes;
     return nodes.filter(
@@ -30,7 +30,7 @@ export class GraphResultsComponent {
     );
   }
 
-  public filteredEdges(edges: ICodeGraph['edges']): ICodeGraph['edges'] {
+  public filteredEdges(edges: IGraphEdge[]): IGraphEdge[] {
     const normalizedFilter: string = this.tableFilter().toLowerCase().trim();
     if (!normalizedFilter) return edges;
     return edges.filter(

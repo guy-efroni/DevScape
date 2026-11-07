@@ -25,6 +25,7 @@ import type { INodeElementData } from './interfaces/node-element-data.interface'
 import type { ISelectedElement } from './interfaces/selected-element.interface';
 import type { ISelectedRelation } from './interfaces/selected-relation.interface';
 import { GraphColor } from './enums/graph-color.enum';
+import { GraphElementGroup } from './enums/graph-element-group.enum';
 import { RelationDirection } from './enums/relation-direction.enum';
 import {
   CSS_CLASS,
@@ -515,7 +516,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
 
   private _createNodeElement(node: ICodeNode): ElementDefinition {
     return {
-      group: 'nodes',
+      group: GraphElementGroup.Nodes,
       data: {
         id: node.id,
         label: node.type === NodeType.File ? `${FILE_LABEL_PREFIX}${node.name}` : node.name,
@@ -528,7 +529,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
 
   private _createExternalNodeElement(packageName: string): ElementDefinition {
     return {
-      group: 'nodes',
+      group: GraphElementGroup.Nodes,
       data: {
         id: packageName,
         label: packageName,
@@ -544,7 +545,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
     relation: EdgeRelation,
   ): ElementDefinition {
     return {
-      group: 'edges',
+      group: GraphElementGroup.Edges,
       data: {
         id: edgeId,
         source: sourceNodeId,
