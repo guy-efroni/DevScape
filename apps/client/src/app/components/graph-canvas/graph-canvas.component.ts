@@ -632,7 +632,13 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       if (e.source === nodeId) outbound++;
       if (e.target === nodeId) inbound++;
     }
-    return { loc: null, cyclomatic: null, inbound, outbound };
+    const node = this.graph.nodes.find((n) => n.id === nodeId);
+    return {
+      loc: node?.loc ?? null,
+      cyclomatic: node?.cyclomaticComplexity ?? null,
+      inbound,
+      outbound,
+    };
   }
 
   private _createNodeElement(node: ICodeNode): ElementDefinition {
@@ -644,6 +650,8 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
         type: node.type,
         fileRole: node.fileRole,
         filePath: node.filePath,
+        loc: node.loc,
+        cyclomaticComplexity: node.cyclomaticComplexity,
       },
     };
   }

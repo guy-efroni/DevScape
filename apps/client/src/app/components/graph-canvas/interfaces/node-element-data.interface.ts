@@ -6,4 +6,6 @@ export interface INodeElementData {
   type: string;
   fileRole?: FileRole;
   filePath?: string;
+  loc?: number;
+  cyclomaticComplexity?: number;
 }

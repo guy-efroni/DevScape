@@ -211,24 +211,33 @@ export class AstParserService {
     relativeFilePath: string,
     nodes: ICodeNode[],
   ): void {
+    const loc = this.countLoc(sourceFile);
+    const fileNode = nodes.find((n) => n.id === relativeFilePath);
+    if (fileNode) {
+      fileNode.loc = loc;
+      fileNode.cyclomaticComplexity = this.computeCyclomaticComplexity(sourceFile);
+    }
+
     const visit = (node: ts.Node): void => {
       if (ts.isClassDeclaration(node) && node.name) {
-        nodes.push(
-          this.createNode(node.name.text, NODE_TYPES.Class, relativeFilePath),
-        );
+        nodes.push(this.createNode(node.name.text, NODE_TYPES.Class, relativeFilePath, node, sourceFile));
       } else if (ts.isFunctionDeclaration(node) && node.name) {
-        nodes.push(
-          this.createNode(node.name.text, NODE_TYPES.Function, relativeFilePath),
-        );
+        nodes.push(this.createNode(node.name.text, NODE_TYPES.Function, relativeFilePath, node, sourceFile));
       } else if (ts.isInterfaceDeclaration(node) && node.name) {
-        nodes.push(
-          this.createNode(node.name.text, NODE_TYPES.Interface, relativeFilePath),
-        );
+        nodes.push(this.createNode(node.name.text, NODE_TYPES.Interface, relativeFilePath, node, sourceFile));
       } else if (ts.isVariableStatement(node)) {
         for (const variableDeclaration of node.declarationList.declarations) {
           if (ts.isIdentifier(variableDeclaration.name)) {
+            const init = variableDeclaration.initializer;
+            const isFnLike = !!init && (ts.isArrowFunction(init) || ts.isFunctionExpression(init));
             nodes.push(
-              this.createNode(variableDeclaration.name.text, NODE_TYPES.Variable, relativeFilePath),
+              this.createNode(
+                variableDeclaration.name.text,
+                NODE_TYPES.Variable,
+                relativeFilePath,
+                isFnLike ? init : variableDeclaration,
+                sourceFile,
+              ),
             );
           }
         }
@@ -240,18 +249,76 @@ export class AstParserService {
     ts.forEachChild(sourceFile, visit);
   }
 
+  private countLoc(sourceFile: ts.SourceFile): number {
+    const text = sourceFile.getFullText();
+    if (!text) return 0;
+    return text.split(/\r?\n/).length;
+  }
+
+  private countNodeLoc(node: ts.Node, sourceFile: ts.SourceFile): number {
+    const text = node.getText(sourceFile);
+    if (!text) return 0;
+    return text.split(/\r?\n/).length;
+  }
+
+  private computeCyclomaticComplexity(node: ts.Node): number {
+    let complexity = 1;
+    const visit = (n: ts.Node): void => {
+      if (
+        ts.isIfStatement(n) ||
+        ts.isConditionalExpression(n) ||
+        ts.isForStatement(n) ||
+        ts.isForInStatement(n) ||
+        ts.isForOfStatement(n) ||
+        ts.isWhileStatement(n) ||
+        ts.isDoStatement(n) ||
+        ts.isCaseClause(n) ||
+        ts.isCatchClause(n)
+      ) {
+        complexity++;
+      }
+      if (ts.isBinaryExpression(n)) {
+        const op = n.operatorToken.kind;
+        if (
+          op === ts.SyntaxKind.AmpersandAmpersandToken ||
+          op === ts.SyntaxKind.BarBarToken ||
+          op === ts.SyntaxKind.QuestionQuestionToken
+        ) {
+          complexity++;
+        }
+      }
+      ts.forEachChild(n, visit);
+    };
+    ts.forEachChild(node, visit);
+    return complexity;
+  }
+
   private createNode(
     name: string,
     type: ICodeNode['type'],
     filePath: string,
+    node?: ts.Node,
+    sourceFile?: ts.SourceFile,
   ): ICodeNode {
-    return {
+    const base: ICodeNode = {
       id: `${filePath}${NODE_ID_SEPARATOR}${name}`,
       name,
       type,
       filePath,
       parent: filePath,
     };
+    if (node && sourceFile) {
+      base.loc = this.countNodeLoc(node, sourceFile);
+      if (
+        type === NODE_TYPES.Function ||
+        type === NODE_TYPES.Class ||
+        (type === NODE_TYPES.Variable &&
+          (ts.isArrowFunction(node) || ts.isFunctionExpression(node)))
+      ) {
+        base.cyclomaticComplexity = this.computeCyclomaticComplexity(node);
+      }
+    }
+    return base;
   }
 
   // ──────────────────────────────────────────────
