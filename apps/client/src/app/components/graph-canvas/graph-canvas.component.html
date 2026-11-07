@@ -1,7 +1,5 @@
 <div class="canvas-wrapper">
-  <!-- Top Toolbar -->
   <header class="floating-toolbar">
-    <!-- View Mode Switcher -->
     <div class="mode-pill-group">
       <button
         type="button"
@@ -60,7 +58,6 @@
       </button>
     </div>
 
-    <!-- Toggles & Search -->
     <div class="toolbar-right">
       <label class="toggle-checkbox" title="Show or hide external package imports like @nestjs/common">
         <input
@@ -87,10 +84,8 @@
     </div>
   </header>
 
-  <!-- Cytoscape Container -->
   <div #cyContainer class="cy-viewport"></div>
 
-  <!-- Minimal Bottom Legend -->
   <footer class="legend-bar">
     <div class="legend-items">
       <span class="legend-badge controller">Controller</span>
@@ -103,7 +98,6 @@
     <span class="legend-hint">💡 Click any node or edge to inspect details</span>
   </footer>
 
-  <!-- Node / Edge Inspector Drawer -->
   @if (selectedElement(); as el) {
     <aside class="inspector-card">
       <div class="inspector-header">
