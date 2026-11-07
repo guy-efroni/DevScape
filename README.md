@@ -114,7 +114,7 @@ Parse a local TypeScript project directory into a code graph.
 - [x] AST parser service using TypeScript Compiler API
 - [x] `POST /api/parse` endpoint with CORS
 - [x] Angular UI shell with path input and results table
-- [ ] Interactive node-graph visualization (D3 / Cytoscape)
+- [ ] Interactive node-graph visualization (Cytoscape — constants-driven view filters, layouts and selectors from `packages/shared`)
 - [ ] File-level node type support
 - [ ] Caching / incremental parsing
 - [ ] Authentication & workspace management

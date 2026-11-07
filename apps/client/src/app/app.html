@@ -111,22 +111,22 @@
         <div class="view-toggle">
           <button
             type="button"
-            [class.active]="viewMode() === 'graph'"
-            (click)="viewMode.set('graph')"
+            [class.active]="viewMode() === ViewMode.Graph"
+            (click)="viewMode.set(ViewMode.Graph)"
           >
             🗺️ Graph View
           </button>
           <button
             type="button"
-            [class.active]="viewMode() === 'table'"
-            (click)="viewMode.set('table')"
+            [class.active]="viewMode() === ViewMode.Table"
+            (click)="viewMode.set(ViewMode.Table)"
           >
             📋 Table View
           </button>
         </div>
       </div>
 
-      @if (viewMode() === 'graph') {
+      @if (viewMode() === ViewMode.Graph) {
         <app-graph-canvas [graph]="g" />
       } @else {
         <!-- Search filter for table -->

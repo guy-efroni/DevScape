@@ -1,4 +1,3 @@
-export interface ParseRequestDto {
+export interface IParseRequestDto {
   directoryPath: string;
 }
-

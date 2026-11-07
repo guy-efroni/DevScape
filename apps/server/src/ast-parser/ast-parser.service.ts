@@ -3,6 +3,25 @@ import * as ts from 'typescript';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ICodeNode, IGraphEdge, ICodeGraph, FileRole } from '@devscape/shared';
+import {
+  EDGE_RELATIONS,
+  ENTRY_FILE_NAME,
+  FILE_ROLE_BY_DECORATOR,
+  FILE_ROLE_BY_SUFFIX,
+  FILE_ROLES,
+  HIDDEN_DIRECTORY_PREFIX,
+  IGNORED_DIRECTORIES,
+  INDEX_FILE_NAME,
+  MODULE_EXTENSION_PATTERN,
+  NODE_ID_SEPARATOR,
+  NODE_TYPES,
+  PATH_SEPARATOR,
+  RELATIVE_IMPORT_PREFIX,
+  TS_DECLARATION_EXTENSION,
+  TS_EXTENSION,
+  TS_TEST_EXTENSION,
+  WINDOWS_PATH_SEPARATOR_PATTERN,
+} from './ast-parser.constants.js';
 
 @Injectable()
 export class AstParserService {
@@ -37,17 +56,15 @@ export class AstParserService {
       skipLibCheck: true,
     });
 
-    const sourceFiles = program.getSourceFiles().filter((sf) => {
-      if (sf.isDeclarationFile) return false;
-      const normalized = path.normalize(sf.fileName);
+    const sourceFiles = program.getSourceFiles().filter((sourceFile) => {
+      if (sourceFile.isDeclarationFile) return false;
+      const normalized = path.normalize(sourceFile.fileName);
       return normalized.startsWith(resolvedPath);
     });
 
     // Map of all known relative file paths in this project
     const knownFiles = new Set(
-      sourceFiles.map((sf) =>
-        path.relative(resolvedPath, path.normalize(sf.fileName)).replace(/\\/g, '/'),
-      ),
+      sourceFiles.map((sourceFile) => this.toRelativePath(resolvedPath, sourceFile.fileName)),
     );
 
     const nodes: ICodeNode[] = [];
@@ -55,9 +72,7 @@ export class AstParserService {
 
     // Pass 1: Extract all file nodes and AST entities (classes, interfaces, functions, variables)
     for (const sourceFile of sourceFiles) {
-      const relativeFilePath = path
-        .relative(resolvedPath, path.normalize(sourceFile.fileName))
-        .replace(/\\/g, '/');
+      const relativeFilePath = this.toRelativePath(resolvedPath, sourceFile.fileName);
 
       const fileRole = this.detectFileRole(sourceFile, relativeFilePath);
 
@@ -65,7 +80,7 @@ export class AstParserService {
       nodes.push({
         id: relativeFilePath,
         name: path.basename(relativeFilePath),
-        type: 'file',
+        type: NODE_TYPES.File,
         filePath: relativeFilePath,
         fileRole,
       });
@@ -77,16 +92,14 @@ export class AstParserService {
     // Build symbol lookup map by name for cross-file and internal symbol resolution
     const symbolMapByName = new Map<string, ICodeNode>();
     for (const node of nodes) {
-      if (node.type !== 'file') {
+      if (node.type !== NODE_TYPES.File) {
         symbolMapByName.set(node.name, node);
       }
     }
 
     // Pass 2: Extract and resolve relationship edges
     for (const sourceFile of sourceFiles) {
-      const relativeFilePath = path
-        .relative(resolvedPath, path.normalize(sourceFile.fileName))
-        .replace(/\\/g, '/');
+      const relativeFilePath = this.toRelativePath(resolvedPath, sourceFile.fileName);
 
       this.extractEdges(sourceFile, relativeFilePath, edges, knownFiles, symbolMapByName);
     }
@@ -109,19 +122,18 @@ export class AstParserService {
     const baseName = path.basename(relativeFilePath).toLowerCase();
 
     // Check by file naming conventions
-    if (baseName.endsWith('.controller.ts')) return 'controller';
-    if (baseName.endsWith('.service.ts')) return 'service';
-    if (baseName.endsWith('.component.ts')) return 'component';
-    if (baseName.endsWith('.module.ts')) return 'module';
-    if (baseName.endsWith('.dto.ts')) return 'dto';
-    if (baseName.endsWith('.interface.ts')) return 'interface';
-    if (baseName === 'index.ts') return 'barrel';
-    if (baseName.endsWith('.config.ts') || baseName === 'main.ts') return 'config';
+    const conventionRole = FILE_ROLE_BY_SUFFIX.find(([suffix]) =>
+      baseName.endsWith(suffix),
+    )?.[1];
+    if (conventionRole) return conventionRole;
+
+    if (baseName === INDEX_FILE_NAME) return FILE_ROLES.Barrel;
+    if (baseName === ENTRY_FILE_NAME) return FILE_ROLES.Config;
 
     // Check by AST decorators
     let detectedFromAst: FileRole | null = null;
 
-    const visit = (node: ts.Node) => {
+    const visit = (node: ts.Node): void => {
       if (detectedFromAst) return;
 
       if (ts.isClassDeclaration(node) && node.modifiers) {
@@ -132,10 +144,8 @@ export class AstParserService {
               ? expr.expression.getText(sourceFile)
               : expr.getText(sourceFile);
 
-            if (decoratorName === 'Controller') detectedFromAst = 'controller';
-            else if (decoratorName === 'Injectable') detectedFromAst = 'service';
-            else if (decoratorName === 'Component') detectedFromAst = 'component';
-            else if (decoratorName === 'Module') detectedFromAst = 'module';
+            const decoratorRole = FILE_ROLE_BY_DECORATOR[decoratorName];
+            if (decoratorRole) detectedFromAst = decoratorRole;
           }
         }
       }
@@ -145,39 +155,51 @@ export class AstParserService {
 
     ts.forEachChild(sourceFile, visit);
 
-    return detectedFromAst ?? 'generic';
+    return detectedFromAst ?? FILE_ROLES.Generic;
   }
 
   // ──────────────────────────────────────────────
   //  File collection
   // ──────────────────────────────────────────────
 
-  private collectTsFiles(dir: string): string[] {
+  private collectTsFiles(directoryPath: string): string[] {
     const results: string[] = [];
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    const entries = fs.readdirSync(directoryPath, { withFileTypes: true });
 
     for (const entry of entries) {
-      const fullPath = path.join(dir, entry.name);
+      const fullPath = path.join(directoryPath, entry.name);
 
       if (entry.isDirectory()) {
         if (
-          entry.name === 'node_modules' ||
-          entry.name === 'dist' ||
-          entry.name.startsWith('.')
+          IGNORED_DIRECTORIES.includes(entry.name) ||
+          entry.name.startsWith(HIDDEN_DIRECTORY_PREFIX)
         ) {
           continue;
         }
         results.push(...this.collectTsFiles(fullPath));
       } else if (
-        entry.name.endsWith('.ts') &&
-        !entry.name.endsWith('.d.ts') &&
-        !entry.name.endsWith('.spec.ts')
+        entry.name.endsWith(TS_EXTENSION) &&
+        !entry.name.endsWith(TS_DECLARATION_EXTENSION) &&
+        !entry.name.endsWith(TS_TEST_EXTENSION)
       ) {
         results.push(fullPath);
       }
     }
 
     return results;
+  }
+
+  // ──────────────────────────────────────────────
+  //  Path helpers
+  // ──────────────────────────────────────────────
+
+  /** Normalize a path to POSIX separators so node IDs are stable across platforms. */
+  private toPosixPath(value: string): string {
+    return value.replace(WINDOWS_PATH_SEPARATOR_PATTERN, PATH_SEPARATOR);
+  }
+
+  private toRelativePath(rootPath: string, fileName: string): string {
+    return this.toPosixPath(path.relative(rootPath, path.normalize(fileName)));
   }
 
   // ──────────────────────────────────────────────
@@ -189,24 +211,24 @@ export class AstParserService {
     relativeFilePath: string,
     nodes: ICodeNode[],
   ): void {
-    const visit = (node: ts.Node) => {
+    const visit = (node: ts.Node): void => {
       if (ts.isClassDeclaration(node) && node.name) {
         nodes.push(
-          this.createNode(node.name.text, 'class', relativeFilePath),
+          this.createNode(node.name.text, NODE_TYPES.Class, relativeFilePath),
         );
       } else if (ts.isFunctionDeclaration(node) && node.name) {
         nodes.push(
-          this.createNode(node.name.text, 'function', relativeFilePath),
+          this.createNode(node.name.text, NODE_TYPES.Function, relativeFilePath),
         );
       } else if (ts.isInterfaceDeclaration(node) && node.name) {
         nodes.push(
-          this.createNode(node.name.text, 'interface', relativeFilePath),
+          this.createNode(node.name.text, NODE_TYPES.Interface, relativeFilePath),
         );
       } else if (ts.isVariableStatement(node)) {
-        for (const decl of node.declarationList.declarations) {
-          if (ts.isIdentifier(decl.name)) {
+        for (const variableDeclaration of node.declarationList.declarations) {
+          if (ts.isIdentifier(variableDeclaration.name)) {
             nodes.push(
-              this.createNode(decl.name.text, 'variable', relativeFilePath),
+              this.createNode(variableDeclaration.name.text, NODE_TYPES.Variable, relativeFilePath),
             );
           }
         }
@@ -224,7 +246,7 @@ export class AstParserService {
     filePath: string,
   ): ICodeNode {
     return {
-      id: `${filePath}::${name}`,
+      id: `${filePath}${NODE_ID_SEPARATOR}${name}`,
       name,
       type,
       filePath,
@@ -257,19 +279,24 @@ export class AstParserService {
     importSpecifier: string,
     knownFiles: Set<string>,
   ): string {
-    if (!importSpecifier.startsWith('.')) {
+    if (!importSpecifier.startsWith(RELATIVE_IMPORT_PREFIX)) {
       return importSpecifier; // External module like '@nestjs/common'
     }
 
-    const dir = path.dirname(relativeFilePath);
-    let resolved = path.normalize(path.join(dir, importSpecifier)).replace(/\\/g, '/');
-    resolved = resolved.replace(/\.(js|mjs|ts)$/, '');
+    const sourceDirectory = path.dirname(relativeFilePath);
+    let resolved = this.toPosixPath(
+      path.normalize(path.join(sourceDirectory, importSpecifier)),
+    );
+    resolved = resolved.replace(MODULE_EXTENSION_PATTERN, '');
 
-    if (knownFiles.has(resolved + '.ts')) return resolved + '.ts';
-    if (knownFiles.has(resolved + '/index.ts')) return resolved + '/index.ts';
+    const tsFilePath = resolved + TS_EXTENSION;
+    const barrelFilePath = resolved + PATH_SEPARATOR + INDEX_FILE_NAME;
+
+    if (knownFiles.has(tsFilePath)) return tsFilePath;
+    if (knownFiles.has(barrelFilePath)) return barrelFilePath;
     if (knownFiles.has(resolved)) return resolved;
 
-    return resolved + '.ts';
+    return tsFilePath;
   }
 
   /** Extract import declarations → "imports" edges */
@@ -279,10 +306,10 @@ export class AstParserService {
     edges: IGraphEdge[],
     knownFiles: Set<string>,
   ): void {
-    for (const stmt of sourceFile.statements) {
-      if (!ts.isImportDeclaration(stmt)) continue;
+    for (const statement of sourceFile.statements) {
+      if (!ts.isImportDeclaration(statement)) continue;
 
-      const moduleSpecifier = stmt.moduleSpecifier;
+      const moduleSpecifier = statement.moduleSpecifier;
       if (!ts.isStringLiteral(moduleSpecifier)) continue;
 
       const rawSpecifier = moduleSpecifier.text;
@@ -291,7 +318,7 @@ export class AstParserService {
       edges.push({
         source: relativeFilePath,
         target,
-        relation: 'imports',
+        relation: EDGE_RELATIONS.Imports,
       });
     }
   }
@@ -303,10 +330,10 @@ export class AstParserService {
     edges: IGraphEdge[],
     symbolMapByName: Map<string, ICodeNode>,
   ): void {
-    const visit = (node: ts.Node) => {
+    const visit = (node: ts.Node): void => {
       if ((ts.isClassDeclaration(node) || ts.isInterfaceDeclaration(node)) && node.name) {
         const entityName = node.name.text;
-        const sourceId = `${relativeFilePath}::${entityName}`;
+        const sourceId = `${relativeFilePath}${NODE_ID_SEPARATOR}${entityName}`;
 
         if (node.heritageClauses) {
           for (const clause of node.heritageClauses) {
@@ -319,7 +346,7 @@ export class AstParserService {
               edges.push({
                 source: sourceId,
                 target,
-                relation: 'extends',
+                relation: EDGE_RELATIONS.Extends,
               });
             }
           }
@@ -339,7 +366,7 @@ export class AstParserService {
     edges: IGraphEdge[],
     symbolMapByName: Map<string, ICodeNode>,
   ): void {
-    const visit = (node: ts.Node) => {
+    const visit = (node: ts.Node): void => {
       if (ts.isCallExpression(node)) {
         const callee = node.expression;
 
@@ -351,7 +378,7 @@ export class AstParserService {
           edges.push({
             source: relativeFilePath,
             target,
-            relation: 'calls',
+            relation: EDGE_RELATIONS.Calls,
           });
         }
       }

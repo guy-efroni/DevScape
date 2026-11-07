@@ -1,29 +1,27 @@
 <div class="canvas-wrapper">
-  <!-- Top Toolbar -->
   <header class="floating-toolbar">
-    <!-- View Mode Switcher -->
     <div class="mode-pill-group">
       <button
         type="button"
         class="mode-btn"
-        [class.active]="viewFilter() === 'architecture'"
-        (click)="setViewFilter('architecture')"
+        [class.active]="viewFilter() === ViewFilter.Architecture"
+        (click)="setViewFilter(ViewFilter.Architecture)"
       >
         🏛️ Architecture (Clean)
       </button>
       <button
         type="button"
         class="mode-btn"
-        [class.active]="viewFilter() === 'files-only'"
-        (click)="setViewFilter('files-only')"
+        [class.active]="viewFilter() === ViewFilter.FilesOnly"
+        (click)="setViewFilter(ViewFilter.FilesOnly)"
       >
         📁 Files Only
       </button>
       <button
         type="button"
         class="mode-btn"
-        [class.active]="viewFilter() === 'all'"
-        (click)="setViewFilter('all')"
+        [class.active]="viewFilter() === ViewFilter.All"
+        (click)="setViewFilter(ViewFilter.All)"
       >
         🔬 All Symbols
       </button>
@@ -34,8 +32,8 @@
       <button
         type="button"
         class="layout-btn"
-        [class.active]="activeLayout() === 'dagre-lr'"
-        (click)="setLayout('dagre-lr')"
+        [class.active]="activeLayout() === LayoutDirection.DagreLeftToRight"
+        (click)="setLayout(LayoutDirection.DagreLeftToRight)"
         title="Left to Right Layered Flow"
       >
         Horizontal (L ➔ R)
@@ -43,8 +41,8 @@
       <button
         type="button"
         class="layout-btn"
-        [class.active]="activeLayout() === 'dagre-tb'"
-        (click)="setLayout('dagre-tb')"
+        [class.active]="activeLayout() === LayoutDirection.DagreTopToBottom"
+        (click)="setLayout(LayoutDirection.DagreTopToBottom)"
         title="Top to Bottom Flow"
       >
         Vertical (T ➔ B)
@@ -52,15 +50,14 @@
       <button
         type="button"
         class="layout-btn"
-        [class.active]="activeLayout() === 'grid'"
-        (click)="setLayout('grid')"
+        [class.active]="activeLayout() === LayoutDirection.Grid"
+        (click)="setLayout(LayoutDirection.Grid)"
         title="Clean Grid"
       >
         ▦ Grid
       </button>
     </div>
 
-    <!-- Toggles & Search -->
     <div class="toolbar-right">
       <label class="toggle-checkbox" title="Show or hide external package imports like @nestjs/common">
         <input
@@ -87,10 +84,8 @@
     </div>
   </header>
 
-  <!-- Cytoscape Container -->
   <div #cyContainer class="cy-viewport"></div>
 
-  <!-- Minimal Bottom Legend -->
   <footer class="legend-bar">
     <div class="legend-items">
       <span class="legend-badge controller">Controller</span>
@@ -103,7 +98,6 @@
     <span class="legend-hint">💡 Click any node or edge to inspect details</span>
   </footer>
 
-  <!-- Node / Edge Inspector Drawer -->
   @if (selectedElement(); as el) {
     <aside class="inspector-card">
       <div class="inspector-header">
