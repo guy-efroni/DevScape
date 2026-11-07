@@ -1,38 +1,38 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { AstParserService } from './ast-parser.service.js';
 import { BadRequestException } from '@nestjs/common';
-import type { ICodeNode, IGraphEdge } from '@devscape/shared';
+import type { ICodeGraph, ICodeNode, IGraphEdge } from '@devscape/shared';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 
-describe('AstParserService', () => {
+describe('AstParserService', (): void => {
   let service: AstParserService;
   let tempDir: string;
 
-  beforeEach(() => {
+  beforeEach((): void => {
     service = new AstParserService();
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ast-parser-test-'));
   });
 
-  afterEach(() => {
+  afterEach((): void => {
     if (fs.existsSync(tempDir)) {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
   });
 
-  it('should throw BadRequestException for non-existent path', () => {
+  it('should throw BadRequestException for non-existent path', (): void => {
     expect(() => service.parseDirectory('/path/that/does/not/exist')).toThrow(
       BadRequestException,
     );
   });
 
-  it('should return empty nodes and edges for empty directory', () => {
-    const result = service.parseDirectory(tempDir);
+  it('should return empty nodes and edges for empty directory', (): void => {
+    const result: ICodeGraph = service.parseDirectory(tempDir);
     expect(result).toEqual({ nodes: [], edges: [] });
   });
 
-  it('should parse local TypeScript files into nodes and import edges', () => {
+  it('should parse local TypeScript files into nodes and import edges', (): void => {
     fs.writeFileSync(
       path.join(tempDir, 'entry.ts'),
       "import { helper } from './helper.js';\nexport const result = helper();",
@@ -42,7 +42,7 @@ describe('AstParserService', () => {
       'export function helper(): string { return "ok"; }',
     );
 
-    const result = service.parseDirectory(tempDir);
+    const result: ICodeGraph = service.parseDirectory(tempDir);
 
     expect(result.nodes).toEqual(
       expect.arrayContaining([
@@ -75,8 +75,8 @@ describe('AstParserService', () => {
     });
   });
 
-  it('should extract nodes, imports, inheritance, and call edges', () => {
-    const sampleTs = `
+  it('should extract nodes, imports, inheritance, and call edges', (): void => {
+    const sampleTs: string = `
       import { Injectable } from '@nestjs/common';
 
       export interface IUserService {
@@ -105,7 +105,7 @@ describe('AstParserService', () => {
 
     fs.writeFileSync(path.join(tempDir, 'user.service.ts'), sampleTs);
 
-    const result = service.parseDirectory(tempDir);
+    const result: ICodeGraph = service.parseDirectory(tempDir);
 
     // Expect file node
     const fileNode = result.nodes.find((n: ICodeNode) => n.type === 'file');
