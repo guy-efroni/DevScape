@@ -46,13 +46,14 @@ import {
 import type { LayoutDirection as LayoutDirectionType } from './types/layout-direction.type';
 import type { GraphLayoutOptions } from './types/graph-layout-options.type';
 import type { ViewFilter as ViewFilterType } from './types/view-filter.type';
+import { InspectorCardComponent } from '../inspector-card/inspector-card.component';
 
 cytoscape.use(dagre);
 
 @Component({
   selector: 'app-graph-canvas',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, InspectorCardComponent],
   templateUrl: './graph-canvas.component.html',
   styleUrl: './graph-canvas.component.scss',
 })

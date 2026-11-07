@@ -12,7 +12,7 @@ import { UNKNOWN_ERROR_MESSAGE, ViewMode } from './app.constants';
   templateUrl: './app.html',
 })
 export class App {
-  private readonly codeGraphService = inject(CodeGraphService);
+  private readonly codeGraphService: CodeGraphService = inject(CodeGraphService);
 
   protected readonly directoryPath: WritableSignal<string> = signal<string>('');
   protected readonly graph: WritableSignal<ICodeGraph | null> = signal<ICodeGraph | null>(null);
