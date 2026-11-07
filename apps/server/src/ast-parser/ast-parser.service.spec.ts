@@ -32,6 +32,49 @@ describe('AstParserService', () => {
     expect(result).toEqual({ nodes: [], edges: [] });
   });
 
+  it('should parse local TypeScript files into nodes and import edges', () => {
+    fs.writeFileSync(
+      path.join(tempDir, 'entry.ts'),
+      "import { helper } from './helper.js';\nexport const result = helper();",
+    );
+    fs.writeFileSync(
+      path.join(tempDir, 'helper.ts'),
+      'export function helper(): string { return "ok"; }',
+    );
+
+    const result = service.parseDirectory(tempDir);
+
+    expect(result.nodes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'entry.ts',
+          type: 'file',
+          filePath: 'entry.ts',
+        }),
+        expect.objectContaining({
+          id: 'entry.ts::result',
+          type: 'variable',
+          filePath: 'entry.ts',
+        }),
+        expect.objectContaining({
+          id: 'helper.ts',
+          type: 'file',
+          filePath: 'helper.ts',
+        }),
+        expect.objectContaining({
+          id: 'helper.ts::helper',
+          type: 'function',
+          filePath: 'helper.ts',
+        }),
+      ]),
+    );
+    expect(result.edges).toContainEqual({
+      source: 'entry.ts',
+      target: 'helper.ts',
+      relation: 'imports',
+    });
+  });
+
   it('should extract nodes, imports, inheritance, and call edges', () => {
     const sampleTs = `
       import { Injectable } from '@nestjs/common';
