@@ -124,6 +124,21 @@
           </div>
         }
       </div>
+
+      <div class="inspector-relations">
+        <h4>Relations</h4>
+        @if (el.relations.length) {
+          @for (relation of el.relations; track $index) {
+            <div class="relation-item">
+              <span class="relation-direction">{{ relation.direction }}</span>
+              <span class="relation-type">{{ relation.relation }}</span>
+              <code class="relation-node">{{ relation.connectedNode }}</code>
+            </div>
+          }
+        } @else {
+          <span class="no-relations">No relations found</span>
+        }
+      </div>
     </aside>
   }
 </div>

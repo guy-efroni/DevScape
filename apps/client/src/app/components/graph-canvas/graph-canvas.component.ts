@@ -23,6 +23,7 @@ import type { ICodeGraph, ICodeNode } from '@devscape/shared';
 import type { IEdgeElementData } from './interfaces/edge-element-data.interface';
 import type { INodeElementData } from './interfaces/node-element-data.interface';
 import type { ISelectedElement } from './interfaces/selected-element.interface';
+import type { ISelectedRelation } from './interfaces/selected-relation.interface';
 import { GraphColor } from './enums/graph-color.enum';
 import {
   CSS_CLASS,
@@ -482,6 +483,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
         label: nodeData.label,
         role: nodeData.fileRole,
         filePath: nodeData.filePath,
+        relations: this._getNodeRelations(nodeData.id),
       });
     });
 
@@ -492,6 +494,13 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
         label: `${edgeData.source}${EDGE_LABEL_SEPARATOR}${edgeData.target}`,
         role: edgeData.relation,
         target: edgeData.target,
+        relations: [
+          {
+            relation: edgeData.relation,
+            direction: 'outgoing',
+            connectedNode: edgeData.target,
+          },
+        ],
       });
     });
 
@@ -541,5 +550,31 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
         relation,
       },
     };
+  }
+
+  private _getNodeRelations(nodeId: string): ISelectedRelation[] {
+    return this.graph.edges.flatMap((edge): ISelectedRelation[] => {
+      if (edge.source === nodeId) {
+        return [
+          {
+            relation: edge.relation,
+            direction: 'outgoing',
+            connectedNode: edge.target,
+          },
+        ];
+      }
+
+      if (edge.target === nodeId) {
+        return [
+          {
+            relation: edge.relation,
+            direction: 'incoming',
+            connectedNode: edge.source,
+          },
+        ];
+      }
+
+      return [];
+    });
   }
 }
