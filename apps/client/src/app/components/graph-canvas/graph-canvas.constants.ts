@@ -41,14 +41,15 @@ export type RankDirection = RankDirectionType;
 export const CSS_CLASS = {
   Highlighted: 'highlighted',
   Dimmed: 'dimmed',
+  Hovered: 'hovered',
 } as const;
 
 export const SELECTOR = {
   Node: 'node',
   Edge: 'edge',
   All: 'node, edge',
-  SelectedOrHighlightedNode: `node:selected, node.${CSS_CLASS.Highlighted}`,
-  SelectedEdge: 'edge:selected',
+  SelectedOrHighlightedNode: `node:selected, node.${CSS_CLASS.Highlighted}, node.${CSS_CLASS.Hovered}`,
+  SelectedEdge: `edge:selected, edge.${CSS_CLASS.Hovered}`,
   Dimmed: `node.${CSS_CLASS.Dimmed}, edge.${CSS_CLASS.Dimmed}`,
 } as const;
 
@@ -66,22 +67,20 @@ export const GRAPH_LAYOUT = {
 
 export const GRAPH_STYLE = {
   NodeFontSize: '11px',
-  NodeFontWeight: 400,
+  NodeFontWeight: 600,
   NodeBorderWidth: 1,
   NodeHeight: 24,
   NodePadding: '8px',
-  FileFontWeight: 500,
+  FileFontWeight: 600,
   ClassBorderWidth: 1,
   EdgeWidth: 1,
-  EdgeArrowScale: 0.8,
-  EdgeFontSize: '9px',
-  EdgeFontWeight: 400,
-  EdgeTextMarginY: -5,
-  EdgeTextBackgroundOpacity: 1,
-  EdgeTextBackgroundPadding: '1px',
+  EdgeOpacity: 0.3,
+  EdgeArrowScale: 0.7,
+  ActiveEdgeWidth: 2,
+  ActiveEdgeFontSize: '10px',
   SelectedNodeBorderWidth: 1,
   SelectedNodeOpacity: 1,
-  SelectedEdgeWidth: 1,
+  SelectedEdgeWidth: 2,
   SelectedEdgeOpacity: 1,
   DimmedOpacity: 0.12,
 } as const;

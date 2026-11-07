@@ -228,6 +228,26 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
     };
   }
 
+  private _applySelection(nodeId: string): void {
+    if (!this._cytoscapeInstance) return;
+    this._cytoscapeInstance.batch((): void => {
+      const all = this._cytoscapeInstance!.$(SELECTOR.All);
+      all.removeClass(`${CSS_CLASS.Highlighted} ${CSS_CLASS.Dimmed} ${CSS_CLASS.Hovered}`);
+      const node = this._cytoscapeInstance!.$id(nodeId);
+      all.addClass(CSS_CLASS.Dimmed);
+      node.removeClass(CSS_CLASS.Dimmed).addClass(CSS_CLASS.Highlighted);
+      node.connectedEdges().removeClass(CSS_CLASS.Dimmed).addClass(CSS_CLASS.Highlighted);
+      node.neighborhood('node').removeClass(CSS_CLASS.Dimmed);
+    });
+  }
+
+  private _clearSelectionClasses(): void {
+    if (!this._cytoscapeInstance) return;
+    this._cytoscapeInstance
+      .$(SELECTOR.All)
+      .removeClass(`${CSS_CLASS.Highlighted} ${CSS_CLASS.Dimmed} ${CSS_CLASS.Hovered}`);
+  }
+
   private _renderGraph(): void {
     if (this._cytoscapeInstance) {
       this._cytoscapeInstance.destroy();
@@ -361,7 +381,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
             'font-family': '"JetBrains Mono", ui-monospace, monospace',
             'font-size': GRAPH_STYLE.NodeFontSize,
             'font-weight': GRAPH_STYLE.NodeFontWeight,
-            color: GraphColor.CanvasText,
+            color: '#ffffff',
             'text-valign': 'center',
             'text-halign': 'center',
             'text-max-width': '220px',
@@ -377,7 +397,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
             height: GRAPH_STYLE.NodeHeight,
             padding: GRAPH_STYLE.NodePadding,
             'overlay-opacity': 0,
-            'transition-property': 'border-color, color, line-color, target-arrow-color, opacity',
+            'transition-property': 'border-color, color, line-color, target-arrow-color, opacity, width',
             'transition-duration': 80,
           },
         },
@@ -386,8 +406,6 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           style: {
             'background-color': GraphColor.FileBackground,
             'border-color': GraphColor.FileBorder,
-            'font-weight': GRAPH_STYLE.FileFontWeight,
-            color: GraphColor.CanvasText,
           },
         },
         {
@@ -395,7 +413,6 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           style: {
             'background-color': GraphColor.ControllerBackground,
             'border-color': GraphColor.ControllerBorder,
-            color: GraphColor.ControllerText,
           },
         },
         {
@@ -403,7 +420,6 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           style: {
             'background-color': GraphColor.ServiceBackground,
             'border-color': GraphColor.ServiceBorder,
-            color: GraphColor.ServiceText,
           },
         },
         {
@@ -411,7 +427,6 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           style: {
             'background-color': GraphColor.ComponentBackground,
             'border-color': GraphColor.ComponentBorder,
-            color: GraphColor.ComponentText,
           },
         },
         {
@@ -419,7 +434,6 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           style: {
             'background-color': GraphColor.ModuleBackground,
             'border-color': GraphColor.ModuleBorder,
-            color: GraphColor.ModuleText,
           },
         },
         {
@@ -427,7 +441,6 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           style: {
             'background-color': GraphColor.ClassBackground,
             'border-color': GraphColor.ClassBorder,
-            color: GraphColor.ClassText,
           },
         },
         {
@@ -435,7 +448,6 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           style: {
             'background-color': GraphColor.InterfaceBackground,
             'border-color': GraphColor.InterfaceBorder,
-            color: GraphColor.InterfaceText,
             'border-style': 'dashed',
           },
         },
@@ -444,7 +456,6 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           style: {
             'background-color': GraphColor.FunctionBackground,
             'border-color': GraphColor.FunctionBorder,
-            color: GraphColor.FunctionText,
           },
         },
         {
@@ -452,7 +463,6 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           style: {
             'background-color': GraphColor.VariableBackground,
             'border-color': GraphColor.VariableBorder,
-            color: GraphColor.VariableText,
           },
         },
         {
@@ -460,7 +470,6 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           style: {
             'background-color': GraphColor.ExternalBackground,
             'border-color': GraphColor.ExternalBorder,
-            color: GraphColor.ExternalText,
             'border-style': 'dotted',
           },
         },
@@ -468,53 +477,19 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           selector: SELECTOR.Edge,
           style: {
             width: GRAPH_STYLE.EdgeWidth,
-            'line-color': GraphColor.Edge,
-            'target-arrow-color': GraphColor.Edge,
-            'target-arrow-shape': 'vee',
-            'target-arrow-fill': 'hollow',
+            'line-color': '#3f3f46',
+            'line-opacity': GRAPH_STYLE.EdgeOpacity,
+            'target-arrow-color': '#3f3f46',
+            'target-arrow-shape': 'triangle',
+            'arrow-scale': GRAPH_STYLE.EdgeArrowScale,
+            label: '',
             'curve-style': 'taxi',
             'taxi-direction': 'auto',
             'taxi-turn': '16px',
-            'arrow-scale': GRAPH_STYLE.EdgeArrowScale,
-            label: 'data(relation)',
-            'font-size': GRAPH_STYLE.EdgeFontSize,
-            'font-weight': GRAPH_STYLE.EdgeFontWeight,
-            'font-family': '"JetBrains Mono", ui-monospace, monospace',
-            'text-rotation': 'none',
-            color: GraphColor.ImportText,
-            'text-background-color': GraphColor.CanvasBackground,
-            'text-background-opacity': 1,
-            'text-background-padding': GRAPH_STYLE.EdgeTextBackgroundPadding,
-            'text-background-shape': 'rectangle',
             'line-cap': 'square',
             'overlay-opacity': 0,
-            'transition-property': 'line-color, target-arrow-color, width, opacity',
+            'transition-property': 'line-color, line-opacity, target-arrow-color, width, opacity',
             'transition-duration': 80,
-          },
-        },
-        {
-          selector: edgeRelationSelector(EdgeRelation.Imports),
-          style: {
-            'line-color': GraphColor.Import,
-            'target-arrow-color': GraphColor.Import,
-            color: GraphColor.ImportText,
-          },
-        },
-        {
-          selector: edgeRelationSelector(EdgeRelation.Extends),
-          style: {
-            'line-color': GraphColor.Extends,
-            'target-arrow-color': GraphColor.Extends,
-            'line-style': 'dashed',
-            color: GraphColor.ExtendsText,
-          },
-        },
-        {
-          selector: edgeRelationSelector(EdgeRelation.Calls),
-          style: {
-            'line-color': GraphColor.Calls,
-            'target-arrow-color': GraphColor.Calls,
-            color: GraphColor.CallsText,
           },
         },
         {
@@ -527,8 +502,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           selector: SELECTOR.SelectedOrHighlightedNode,
           style: {
             'border-width': GRAPH_STYLE.SelectedNodeBorderWidth,
-            'border-color': GraphColor.Selection,
-            color: GraphColor.SelectionText,
+            'border-color': '#3b82f6',
             'background-opacity': 1,
             'z-index': 10,
             opacity: GRAPH_STYLE.SelectedNodeOpacity,
@@ -537,10 +511,20 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
         {
           selector: SELECTOR.SelectedEdge,
           style: {
-            width: GRAPH_STYLE.SelectedEdgeWidth,
-            'line-color': GraphColor.Selection,
-            'target-arrow-color': GraphColor.Selection,
-            color: GraphColor.SelectionText,
+            width: GRAPH_STYLE.ActiveEdgeWidth,
+            'line-color': '#3b82f6',
+            'line-opacity': 1,
+            'target-arrow-color': '#3b82f6',
+            label: 'data(relation)',
+            'font-family': '"JetBrains Mono", ui-monospace, monospace',
+            'font-size': GRAPH_STYLE.ActiveEdgeFontSize,
+            'font-weight': 400,
+            color: '#3b82f6',
+            'text-rotation': 'none',
+            'text-background-color': GraphColor.CanvasBackground,
+            'text-background-opacity': 1,
+            'text-background-padding': '2px',
+            'text-background-shape': 'rectangle',
             'z-index': 9,
             opacity: GRAPH_STYLE.SelectedEdgeOpacity,
           },
@@ -549,10 +533,8 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           selector: SELECTOR.Dimmed,
           style: {
             opacity: GRAPH_STYLE.DimmedOpacity,
-            color: GraphColor.DimText,
-            'line-color': '#18181b',
-            'target-arrow-color': '#18181b',
-            'text-opacity': 0.25,
+            'line-opacity': 0.08,
+            'text-opacity': 0.2,
           },
         },
       ],
@@ -565,6 +547,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
 
     this._cytoscapeInstance.on('tap', SELECTOR.Node, (event: EventObject): void => {
       const nodeData: INodeElementData = event.target.data() as INodeElementData;
+      this._applySelection(nodeData.id);
       this._zone.run(() => {
         this.selectedElement.set({
           type: nodeData.type,
@@ -578,8 +561,30 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       });
     });
 
+    this._cytoscapeInstance.on('mouseover', SELECTOR.Node, (event: EventObject): void => {
+      event.target.addClass(CSS_CLASS.Hovered);
+      event.target.connectedEdges().addClass(CSS_CLASS.Hovered);
+    });
+    this._cytoscapeInstance.on('mouseout', SELECTOR.Node, (event: EventObject): void => {
+      event.target.removeClass(CSS_CLASS.Hovered);
+      event.target.connectedEdges().removeClass(CSS_CLASS.Hovered);
+    });
+    this._cytoscapeInstance.on('mouseover', SELECTOR.Edge, (event: EventObject): void => {
+      event.target.addClass(CSS_CLASS.Hovered);
+    });
+    this._cytoscapeInstance.on('mouseout', SELECTOR.Edge, (event: EventObject): void => {
+      event.target.removeClass(CSS_CLASS.Hovered);
+    });
+
     this._cytoscapeInstance.on('tap', SELECTOR.Edge, (event: EventObject): void => {
       const edgeData: IEdgeElementData = event.target.data() as IEdgeElementData;
+      this._cytoscapeInstance!.batch((): void => {
+        const all = this._cytoscapeInstance!.$(SELECTOR.All);
+        all.removeClass(`${CSS_CLASS.Highlighted} ${CSS_CLASS.Dimmed} ${CSS_CLASS.Hovered}`);
+        all.addClass(CSS_CLASS.Dimmed);
+        event.target.removeClass(CSS_CLASS.Dimmed).addClass(CSS_CLASS.Highlighted);
+        event.target.connectedNodes().removeClass(CSS_CLASS.Dimmed);
+      });
       this._zone.run(() => {
         this.selectedElement.set({
           type: RELATIONSHIP_ELEMENT_TYPE,
@@ -600,6 +605,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
 
     this._cytoscapeInstance.on('tap', (event: EventObject): void => {
       if (event.target === this._cytoscapeInstance) {
+        this._clearSelectionClasses();
         this._zone.run(() => this.selectedElement.set(null));
       }
     });
