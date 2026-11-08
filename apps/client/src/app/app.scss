@@ -24,6 +24,10 @@
   background: var(--bg-surface);
 }
 
+.topbar-spacer {
+  min-width: 0;
+}
+
 .topbar-left,
 .topbar-right {
   display: flex;
@@ -384,7 +388,8 @@
   .topbar-right {
     grid-area: right;
   }
-  .topbar-path {
+  .topbar-path,
+  .topbar-spacer {
     grid-area: path;
   }
   .status-text {
