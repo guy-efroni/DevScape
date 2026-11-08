@@ -42,7 +42,7 @@ export class AstParserService {
       throw new BadRequestException(`Path is not a directory: ${resolvedPath}`);
     }
 
-    const tsFiles = this.collectTsFiles(resolvedPath);
+    const tsFiles = this._collectTsFiles(resolvedPath);
 
     if (tsFiles.length === 0) {
       return { nodes: [], edges: [] };
@@ -64,7 +64,7 @@ export class AstParserService {
 
     // Map of all known relative file paths in this project
     const knownFiles = new Set(
-      sourceFiles.map((sourceFile) => this.toRelativePath(resolvedPath, sourceFile.fileName)),
+      sourceFiles.map((sourceFile) => this._toRelativePath(resolvedPath, sourceFile.fileName)),
     );
 
     const nodes: ICodeNode[] = [];
@@ -72,9 +72,9 @@ export class AstParserService {
 
     // Pass 1: Extract all file nodes and AST entities (classes, interfaces, functions, variables)
     for (const sourceFile of sourceFiles) {
-      const relativeFilePath = this.toRelativePath(resolvedPath, sourceFile.fileName);
+      const relativeFilePath = this._toRelativePath(resolvedPath, sourceFile.fileName);
 
-      const fileRole = this.detectFileRole(sourceFile, relativeFilePath);
+      const fileRole = this._detectFileRole(sourceFile, relativeFilePath);
 
       // 1. Extract file-level node
       nodes.push({
@@ -86,7 +86,7 @@ export class AstParserService {
       });
 
       // 2. Extract AST entity nodes
-      this.extractNodes(sourceFile, relativeFilePath, nodes);
+      this._extractNodes(sourceFile, relativeFilePath, nodes);
     }
 
     // Build symbol lookup map by name for cross-file and internal symbol resolution
@@ -99,9 +99,9 @@ export class AstParserService {
 
     // Pass 2: Extract and resolve relationship edges
     for (const sourceFile of sourceFiles) {
-      const relativeFilePath = this.toRelativePath(resolvedPath, sourceFile.fileName);
+      const relativeFilePath = this._toRelativePath(resolvedPath, sourceFile.fileName);
 
-      this.extractEdges(sourceFile, relativeFilePath, edges, knownFiles, symbolMapByName);
+      this._extractEdges(sourceFile, relativeFilePath, edges, knownFiles, symbolMapByName);
     }
 
     return { nodes, edges };
@@ -115,7 +115,7 @@ export class AstParserService {
   //  File role detection
   // ──────────────────────────────────────────────
 
-  private detectFileRole(
+  private _detectFileRole(
     sourceFile: ts.SourceFile,
     relativeFilePath: string,
   ): FileRole {
@@ -162,7 +162,7 @@ export class AstParserService {
   //  File collection
   // ──────────────────────────────────────────────
 
-  private collectTsFiles(directoryPath: string): string[] {
+  private _collectTsFiles(directoryPath: string): string[] {
     const results: string[] = [];
     const entries = fs.readdirSync(directoryPath, { withFileTypes: true });
 
@@ -176,7 +176,7 @@ export class AstParserService {
         ) {
           continue;
         }
-        results.push(...this.collectTsFiles(fullPath));
+        results.push(...this._collectTsFiles(fullPath));
       } else if (
         entry.name.endsWith(TS_EXTENSION) &&
         !entry.name.endsWith(TS_DECLARATION_EXTENSION) &&
@@ -194,44 +194,44 @@ export class AstParserService {
   // ──────────────────────────────────────────────
 
   /** Normalize a path to POSIX separators so node IDs are stable across platforms. */
-  private toPosixPath(value: string): string {
+  private _toPosixPath(value: string): string {
     return value.replace(WINDOWS_PATH_SEPARATOR_PATTERN, PATH_SEPARATOR);
   }
 
-  private toRelativePath(rootPath: string, fileName: string): string {
-    return this.toPosixPath(path.relative(rootPath, path.normalize(fileName)));
+  private _toRelativePath(rootPath: string, fileName: string): string {
+    return this._toPosixPath(path.relative(rootPath, path.normalize(fileName)));
   }
 
   // ──────────────────────────────────────────────
   //  Node extraction
   // ──────────────────────────────────────────────
 
-  private extractNodes(
+  private _extractNodes(
     sourceFile: ts.SourceFile,
     relativeFilePath: string,
     nodes: ICodeNode[],
   ): void {
-    const loc = this.countLoc(sourceFile);
-    const fileNode = nodes.find((n) => n.id === relativeFilePath);
+    const loc = this._countLoc(sourceFile);
+    const fileNode = nodes.find((codeNode) => codeNode.id === relativeFilePath);
     if (fileNode) {
       fileNode.loc = loc;
-      fileNode.cyclomaticComplexity = this.computeCyclomaticComplexity(sourceFile);
+      fileNode.cyclomaticComplexity = this._computeCyclomaticComplexity(sourceFile);
     }
 
-    const visit = (node: ts.Node): void => {
-      if (ts.isClassDeclaration(node) && node.name) {
-        nodes.push(this.createNode(node.name.text, NODE_TYPES.Class, relativeFilePath, node, sourceFile));
-      } else if (ts.isFunctionDeclaration(node) && node.name) {
-        nodes.push(this.createNode(node.name.text, NODE_TYPES.Function, relativeFilePath, node, sourceFile));
-      } else if (ts.isInterfaceDeclaration(node) && node.name) {
-        nodes.push(this.createNode(node.name.text, NODE_TYPES.Interface, relativeFilePath, node, sourceFile));
-      } else if (ts.isVariableStatement(node)) {
-        for (const variableDeclaration of node.declarationList.declarations) {
+    const visit = (astNode: ts.Node): void => {
+      if (ts.isClassDeclaration(astNode) && astNode.name) {
+        nodes.push(this._createNode(astNode.name.text, NODE_TYPES.Class, relativeFilePath, astNode, sourceFile));
+      } else if (ts.isFunctionDeclaration(astNode) && astNode.name) {
+        nodes.push(this._createNode(astNode.name.text, NODE_TYPES.Function, relativeFilePath, astNode, sourceFile));
+      } else if (ts.isInterfaceDeclaration(astNode) && astNode.name) {
+        nodes.push(this._createNode(astNode.name.text, NODE_TYPES.Interface, relativeFilePath, astNode, sourceFile));
+      } else if (ts.isVariableStatement(astNode)) {
+        for (const variableDeclaration of astNode.declarationList.declarations) {
           if (ts.isIdentifier(variableDeclaration.name)) {
             const init = variableDeclaration.initializer;
             const isFnLike = !!init && (ts.isArrowFunction(init) || ts.isFunctionExpression(init));
             nodes.push(
-              this.createNode(
+              this._createNode(
                 variableDeclaration.name.text,
                 NODE_TYPES.Variable,
                 relativeFilePath,
@@ -243,61 +243,61 @@ export class AstParserService {
         }
       }
 
-      ts.forEachChild(node, visit);
+      ts.forEachChild(astNode, visit);
     };
 
     ts.forEachChild(sourceFile, visit);
   }
 
-  private countLoc(sourceFile: ts.SourceFile): number {
+  private _countLoc(sourceFile: ts.SourceFile): number {
     const text = sourceFile.getFullText();
     if (!text) return 0;
     return text.split(/\r?\n/).length;
   }
 
-  private countNodeLoc(node: ts.Node, sourceFile: ts.SourceFile): number {
-    const text = node.getText(sourceFile);
+  private _countNodeLoc(astNode: ts.Node, sourceFile: ts.SourceFile): number {
+    const text = astNode.getText(sourceFile);
     if (!text) return 0;
     return text.split(/\r?\n/).length;
   }
 
-  private computeCyclomaticComplexity(node: ts.Node): number {
+  private _computeCyclomaticComplexity(rootNode: ts.Node): number {
     let complexity = 1;
-    const visit = (n: ts.Node): void => {
+    const visit = (astNode: ts.Node): void => {
       if (
-        ts.isIfStatement(n) ||
-        ts.isConditionalExpression(n) ||
-        ts.isForStatement(n) ||
-        ts.isForInStatement(n) ||
-        ts.isForOfStatement(n) ||
-        ts.isWhileStatement(n) ||
-        ts.isDoStatement(n) ||
-        ts.isCaseClause(n) ||
-        ts.isCatchClause(n)
+        ts.isIfStatement(astNode) ||
+        ts.isConditionalExpression(astNode) ||
+        ts.isForStatement(astNode) ||
+        ts.isForInStatement(astNode) ||
+        ts.isForOfStatement(astNode) ||
+        ts.isWhileStatement(astNode) ||
+        ts.isDoStatement(astNode) ||
+        ts.isCaseClause(astNode) ||
+        ts.isCatchClause(astNode)
       ) {
         complexity++;
       }
-      if (ts.isBinaryExpression(n)) {
-        const op = n.operatorToken.kind;
+      if (ts.isBinaryExpression(astNode)) {
+        const operatorKind = astNode.operatorToken.kind;
         if (
-          op === ts.SyntaxKind.AmpersandAmpersandToken ||
-          op === ts.SyntaxKind.BarBarToken ||
-          op === ts.SyntaxKind.QuestionQuestionToken
+          operatorKind === ts.SyntaxKind.AmpersandAmpersandToken ||
+          operatorKind === ts.SyntaxKind.BarBarToken ||
+          operatorKind === ts.SyntaxKind.QuestionQuestionToken
         ) {
           complexity++;
         }
       }
-      ts.forEachChild(n, visit);
+      ts.forEachChild(astNode, visit);
     };
-    ts.forEachChild(node, visit);
+    ts.forEachChild(rootNode, visit);
     return complexity;
   }
 
-  private createNode(
+  private _createNode(
     name: string,
     type: ICodeNode['type'],
     filePath: string,
-    node?: ts.Node,
+    astNode?: ts.Node,
     sourceFile?: ts.SourceFile,
   ): ICodeNode {
     const base: ICodeNode = {
@@ -307,15 +307,15 @@ export class AstParserService {
       filePath,
       parent: filePath,
     };
-    if (node && sourceFile) {
-      base.loc = this.countNodeLoc(node, sourceFile);
+    if (astNode && sourceFile) {
+      base.loc = this._countNodeLoc(astNode, sourceFile);
       if (
         type === NODE_TYPES.Function ||
         type === NODE_TYPES.Class ||
         (type === NODE_TYPES.Variable &&
-          (ts.isArrowFunction(node) || ts.isFunctionExpression(node)))
+          (ts.isArrowFunction(astNode) || ts.isFunctionExpression(astNode)))
       ) {
-        base.cyclomaticComplexity = this.computeCyclomaticComplexity(node);
+        base.cyclomaticComplexity = this._computeCyclomaticComplexity(astNode);
       }
     }
     return base;
@@ -325,23 +325,23 @@ export class AstParserService {
   //  Edge extraction with Path & Symbol Resolution
   // ──────────────────────────────────────────────
 
-  private extractEdges(
+  private _extractEdges(
     sourceFile: ts.SourceFile,
     relativeFilePath: string,
     edges: IGraphEdge[],
     knownFiles: Set<string>,
     symbolMapByName: Map<string, ICodeNode>,
   ): void {
-    this.extractImports(sourceFile, relativeFilePath, edges, knownFiles);
-    this.extractExtensions(sourceFile, relativeFilePath, edges, symbolMapByName);
-    this.extractCalls(sourceFile, relativeFilePath, edges, symbolMapByName);
+    this._extractImports(sourceFile, relativeFilePath, edges, knownFiles);
+    this._extractExtensions(sourceFile, relativeFilePath, edges, symbolMapByName);
+    this._extractCalls(sourceFile, relativeFilePath, edges, symbolMapByName);
   }
 
   /**
    * Resolves relative import specifiers (e.g. `./app.service.js`) to the actual
    * target file node ID (e.g. `app.service.ts`).
    */
-  private resolveImportTarget(
+  private _resolveImportTarget(
     relativeFilePath: string,
     importSpecifier: string,
     knownFiles: Set<string>,
@@ -351,7 +351,7 @@ export class AstParserService {
     }
 
     const sourceDirectory = path.dirname(relativeFilePath);
-    let resolved = this.toPosixPath(
+    let resolved = this._toPosixPath(
       path.normalize(path.join(sourceDirectory, importSpecifier)),
     );
     resolved = resolved.replace(MODULE_EXTENSION_PATTERN, '');
@@ -367,7 +367,7 @@ export class AstParserService {
   }
 
   /** Extract import declarations → "imports" edges */
-  private extractImports(
+  private _extractImports(
     sourceFile: ts.SourceFile,
     relativeFilePath: string,
     edges: IGraphEdge[],
@@ -380,7 +380,7 @@ export class AstParserService {
       if (!ts.isStringLiteral(moduleSpecifier)) continue;
 
       const rawSpecifier = moduleSpecifier.text;
-      const target = this.resolveImportTarget(relativeFilePath, rawSpecifier, knownFiles);
+      const target = this._resolveImportTarget(relativeFilePath, rawSpecifier, knownFiles);
 
       edges.push({
         source: relativeFilePath,
@@ -391,7 +391,7 @@ export class AstParserService {
   }
 
   /** Extract `extends` / `implements` clauses → "extends" edges */
-  private extractExtensions(
+  private _extractExtensions(
     sourceFile: ts.SourceFile,
     relativeFilePath: string,
     edges: IGraphEdge[],
@@ -427,7 +427,7 @@ export class AstParserService {
   }
 
   /** Extract function call expressions → "calls" edges */
-  private extractCalls(
+  private _extractCalls(
     sourceFile: ts.SourceFile,
     relativeFilePath: string,
     edges: IGraphEdge[],

@@ -97,14 +97,14 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
     signal<ISelectedElement | null>(null);
 
   public readonly legendCounts = computed(() => {
-    const g = this.graph;
-    if (!g) return [] as Array<{ label: string; count: number; tone: string }>;
+    const graph = this.graph;
+    if (!graph) return [] as Array<{ label: string; count: number; tone: string }>;
     let services = 0;
     let controllers = 0;
     let modules = 0;
     let components = 0;
-    for (const n of g.nodes) {
-      switch (n.fileRole) {
+    for (const node of graph.nodes) {
+      switch (node.fileRole) {
         case FileRole.Service:
           services++;
           break;
@@ -127,8 +127,8 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
     if (modules) items.push({ label: LEGEND_LABEL.Modules, count: modules, tone: LegendTone.Module });
     if (components) items.push({ label: LEGEND_LABEL.Components, count: components, tone: LegendTone.Component });
     if (!items.length) {
-      items.push({ label: LEGEND_LABEL.Nodes, count: g.nodes.length, tone: LegendTone.Neutral });
-      items.push({ label: LEGEND_LABEL.Edges, count: g.edges.length, tone: LegendTone.Neutral });
+      items.push({ label: LEGEND_LABEL.Nodes, count: graph.nodes.length, tone: LegendTone.Neutral });
+      items.push({ label: LEGEND_LABEL.Edges, count: graph.edges.length, tone: LegendTone.Neutral });
     }
     return items;
   });
@@ -562,11 +562,11 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
   private _computeMetrics(nodeId: string): ISelectedElement['metrics'] {
     let inbound = 0;
     let outbound = 0;
-    for (const e of this.graph.edges) {
-      if (e.source === nodeId) outbound++;
-      if (e.target === nodeId) inbound++;
+    for (const edge of this.graph.edges) {
+      if (edge.source === nodeId) outbound++;
+      if (edge.target === nodeId) inbound++;
     }
-    const node = this.graph.nodes.find((n) => n.id === nodeId);
+    const node = this.graph.nodes.find((graphNode) => graphNode.id === nodeId);
     return {
       loc: node?.loc ?? null,
       cyclomatic: node?.cyclomaticComplexity ?? null,

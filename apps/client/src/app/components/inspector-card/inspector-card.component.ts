@@ -40,11 +40,11 @@ export class InspectorCardComponent {
     this.relationsExpanded.update((expanded: boolean): boolean => !expanded);
   }
 
-  public referenceLine(r: ISelectedRelation): string {
-    const raw = r.targetId ?? r.connectedNode;
+  public referenceLine(relation: ISelectedRelation): string {
+    const raw = relation.targetId ?? relation.connectedNode;
     const spec = this._specifier(raw);
-    const name = this._displayName(r.connectedNode);
-    switch (r.relation) {
+    const name = this._displayName(relation.connectedNode);
+    switch (relation.relation) {
       case EdgeRelation.Imports:
         return `import { ${name} } from '${spec}';`;
       case EdgeRelation.Extends:
@@ -52,7 +52,7 @@ export class InspectorCardComponent {
       case EdgeRelation.Calls:
         return `${name}()`;
       default:
-        return `${r.relation} ${spec}`;
+        return `${relation.relation} ${spec}`;
     }
   }
 
