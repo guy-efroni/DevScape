@@ -1,4 +1,4 @@
-<aside class="inspector" aria-label="Node inspector">
+<aside class="inspector" [attr.aria-label]="ui.ariaLabel">
   <header class="inspector-head">
     <div class="head-top">
       <div class="title-row">
@@ -9,7 +9,7 @@
           <span class="ext-tag mono">{{ selectedElement.role }}</span>
         }
       </div>
-      <button type="button" class="close-btn" (click)="closed.emit()" aria-label="Close inspector">×</button>
+      <button type="button" class="close-btn" (click)="closed.emit()" [attr.aria-label]="ui.close">×</button>
     </div>
     @if (selectedElement.displayPath || selectedElement.filePath) {
       <div class="path mono">{{ selectedElement.displayPath || selectedElement.filePath }}</div>
@@ -20,22 +20,22 @@
 
   @if (selectedElement.metrics; as m) {
     <section class="section">
-      <div class="section-label mono">METRICS</div>
+      <div class="section-label mono">{{ ui.metrics }}</div>
       <div class="metrics-grid mono">
         <div class="metric">
-          <span class="metric-k">LOC</span>
-          <span class="metric-v">{{ m.loc ?? '—' }}</span>
+          <span class="metric-k">{{ ui.loc }}</span>
+          <span class="metric-v">{{ m.loc ?? ui.metricFallback }}</span>
         </div>
         <div class="metric">
-          <span class="metric-k">CYCLOMATIC</span>
-          <span class="metric-v">{{ m.cyclomatic ?? '—' }}</span>
+          <span class="metric-k">{{ ui.cyclomatic }}</span>
+          <span class="metric-v">{{ m.cyclomatic ?? ui.metricFallback }}</span>
         </div>
         <div class="metric">
-          <span class="metric-k">INBOUND</span>
+          <span class="metric-k">{{ ui.inbound }}</span>
           <span class="metric-v">{{ m.inbound }}</span>
         </div>
         <div class="metric">
-          <span class="metric-k">OUTBOUND</span>
+          <span class="metric-k">{{ ui.outbound }}</span>
           <span class="metric-v">{{ m.outbound }}</span>
         </div>
       </div>
@@ -49,7 +49,7 @@
       [attr.aria-expanded]="relationsExpanded()"
       (click)="toggleRelations()"
     >
-      <span>CODE REFERENCES</span>
+      <span>{{ ui.codeReferences }}</span>
       <span class="chev" [class.open]="relationsExpanded()">▸</span>
     </button>
 
@@ -66,7 +66,7 @@
             </div>
           }
         } @else {
-          <div class="empty mono">No references</div>
+          <div class="empty mono">{{ ui.noReferences }}</div>
         }
       </div>
     }

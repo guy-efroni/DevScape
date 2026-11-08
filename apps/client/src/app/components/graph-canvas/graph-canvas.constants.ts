@@ -85,6 +85,96 @@ export const GRAPH_STYLE = {
   DimmedOpacity: 0.12,
 } as const;
 
+export const LegendTone = {
+  Service: 'service',
+  Controller: 'controller',
+  Module: 'module',
+  Component: 'component',
+  Neutral: 'neutral',
+} as const;
+
+export type LegendTone = (typeof LegendTone)[keyof typeof LegendTone];
+
+export const LEGEND_LABEL = {
+  Services: 'Services',
+  Controllers: 'Controllers',
+  Modules: 'Modules',
+  Components: 'Components',
+  Nodes: 'Nodes',
+  Edges: 'Edges',
+} as const;
+
+export const KEYBOARD_KEY = {
+  Fit: '0',
+} as const;
+
+export const CY_EVENT = {
+  Tap: 'tap',
+  Zoom: 'zoom',
+  MouseOver: 'mouseover',
+  MouseOut: 'mouseout',
+} as const;
+
+export const GRAPH_DEFAULTS = {
+  ZoomPercent: 100,
+  PixelRatioMin: 2,
+  EdgeIdPrefix: 'edge-',
+} as const;
+
+export const PATH_TEXT = {
+  Separator: '/',
+  WindowsSeparatorPattern: /\\/g,
+  ExtensionDot: '.',
+  EdgeKeySeparator: '->',
+  EdgeKeyMetaSeparator: ':',
+} as const;
+
+export const CY_DATA = {
+  Label: 'data(label)',
+  Relation: 'data(relation)',
+} as const;
+
+export const CY_FONT = {
+  Mono: '"JetBrains Mono", ui-monospace, monospace',
+  WeightActiveLabel: 400,
+} as const;
+
+export const CY_EDGE = {
+  Color: '#3f3f46',
+  DimColor: '#18181b',
+  ActiveColor: '#3b82f6',
+  OpacityHidden: 0.08,
+  TextOpacityDimmed: 0.2,
+  ZNode: 10,
+  ZEdge: 9,
+  TransitionDurationMs: 80,
+  NodeTransition: 'border-color, color, line-color, target-arrow-color, opacity, width',
+  EdgeTransition: 'line-color, line-opacity, target-arrow-color, width, opacity',
+  ArrowTriangle: 'triangle',
+  CurveTaxi: 'taxi',
+  TaxiDirection: 'auto',
+  TaxiTurn: '16px',
+  CapSquare: 'square',
+  TextBgPadding: '2px',
+  TextBgShape: 'rectangle',
+  TextRotationNone: 'none',
+} as const;
+
+export const CY_NODE = {
+  TextWhite: '#ffffff',
+  Shape: 'round-rectangle',
+  CornerRadius: '4px',
+  BorderSolid: 'solid',
+  BorderDashed: 'dashed',
+  BorderDotted: 'dotted',
+  TextMaxWidth: '220px',
+  TextWrap: 'ellipsis',
+  ValignCenter: 'center',
+  HalignCenter: 'center',
+  WidthLabel: 'label',
+  Neighborhood: 'node',
+} as const;
+
 export function nodeTypeSelector(type: string): string {
   return `${SELECTOR.Node}[type = "${type}"]`;
 }

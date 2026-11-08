@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import type { ICodeGraph } from '@devscape/shared';
 import { CodeGraphService } from './services/code-graph.service';
 import { GraphResultsComponent } from './components/graph-results/graph-results.component';
-import { UNKNOWN_ERROR_MESSAGE } from './app.constants';
+import { APP_UI, AppStatus, UNKNOWN_ERROR_MESSAGE } from './app.constants';
 
 @Component({
   imports: [FormsModule, GraphResultsComponent],
@@ -18,6 +18,8 @@ export class App {
   protected readonly graph: WritableSignal<ICodeGraph | null> = signal<ICodeGraph | null>(null);
   protected readonly loading: WritableSignal<boolean> = signal<boolean>(false);
   protected readonly error: WritableSignal<string | null> = signal<string | null>(null);
+  protected readonly ui = APP_UI;
+  protected readonly status = AppStatus;
 
   protected onSubmit(): void {
     const dirPath = this.directoryPath().trim();

@@ -1,10 +1,10 @@
 <main class="app-shell">
   <header class="topbar">
     <div class="topbar-left">
-      <span class="wordmark">DevScape</span>
-      <span class="status-pill" [attr.data-state]="error() ? 'error' : loading() ? 'busy' : 'ok'">
+      <span class="wordmark">{{ ui.wordmark }}</span>
+      <span class="status-pill" [attr.data-state]="error() ? status.Error : loading() ? status.Busy : status.Ok">
         <span class="status-dot" aria-hidden="true"></span>
-        <span class="status-text mono">{{ error() ? 'Disconnected' : loading() ? 'Parsing' : 'Connected to local server' }}</span>
+        <span class="status-text mono">{{ error() ? ui.status.disconnected : loading() ? ui.status.parsing : ui.status.connected }}</span>
       </span>
     </div>
 
@@ -24,7 +24,7 @@
 
   @if (error(); as err) {
     <div class="error-strip mono" role="alert">
-      <span class="error-tag">ERR</span>
+      <span class="error-tag">{{ ui.errorTag }}</span>
       <span class="error-msg">{{ err }}</span>
     </div>
   }
@@ -33,15 +33,15 @@
     @if (!graph() && !loading()) {
       <section class="empty-state">
         <div class="empty-head">
-          <span class="mono label">TARGET</span>
-          <p class="empty-copy">Enter a local TypeScript directory to generate the codebase graph.</p>
+          <span class="mono label">{{ ui.start.sectionLabel }}</span>
+          <p class="empty-copy">{{ ui.start.copy }}</p>
         </div>
         <form class="start-search" (ngSubmit)="onSubmit()">
           <input
             id="startDirPath"
             type="text"
             class="start-search-input mono"
-            placeholder="Search or paste a project path"
+            [placeholder]="ui.start.inputPlaceholder"
             [ngModel]="directoryPath()"
             (ngModelChange)="directoryPath.set($event)"
             name="startDirectoryPath"
@@ -52,9 +52,9 @@
           <button type="submit" class="start-search-go" [disabled]="loading() || !directoryPath().trim()" aria-label="Parse directory">→</button>
         </form>
         <div class="meta-grid mono">
-          <div class="meta-cell"><span class="meta-k">ENGINE</span><span class="meta-v">AST / TS</span></div>
-          <div class="meta-cell"><span class="meta-k">SCOPE</span><span class="meta-v">LOCAL</span></div>
-          <div class="meta-cell"><span class="meta-k">RENDER</span><span class="meta-v">CYTOSCAPE</span></div>
+          <div class="meta-cell"><span class="meta-k">{{ ui.meta.engineKey }}</span><span class="meta-v">{{ ui.meta.engineValue }}</span></div>
+          <div class="meta-cell"><span class="meta-k">{{ ui.meta.scopeKey }}</span><span class="meta-v">{{ ui.meta.scopeValue }}</span></div>
+          <div class="meta-cell"><span class="meta-k">{{ ui.meta.renderKey }}</span><span class="meta-v">{{ ui.meta.renderValue }}</span></div>
         </div>
       </section>
     }
@@ -62,7 +62,7 @@
     @if (loading()) {
       <section class="loading-state mono" aria-live="polite">
         <span class="spinner" aria-hidden="true"></span>
-        <span>Parsing {{ directoryPath().trim() }}…</span>
+        <span>{{ ui.start.parsingPrefix }}{{ directoryPath().trim() }}…</span>
       </section>
     }
 
