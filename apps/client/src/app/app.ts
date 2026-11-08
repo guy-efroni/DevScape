@@ -19,26 +19,6 @@ export class App {
   protected readonly loading: WritableSignal<boolean> = signal<boolean>(false);
   protected readonly error: WritableSignal<string | null> = signal<string | null>(null);
 
-  protected readonly presets: ReadonlyArray<{ label: string; path: string }> = [
-    { label: 'Server Source', path: 'apps/server/src' },
-    { label: 'Shared Interfaces', path: 'packages/shared/src' },
-    { label: 'Client App', path: 'apps/client/src/app' },
-  ];
-
-  protected selectPreset(presetPath: string): void {
-    this.directoryPath.set(presetPath);
-    this.onSubmit();
-  }
-
-  protected onPathKeydown(event: KeyboardEvent): void {
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-      event.preventDefault();
-      const el = (event.currentTarget as HTMLElement | null)?.querySelector<HTMLInputElement>('#dirPath');
-      el?.focus();
-      el?.select();
-    }
-  }
-
   protected onSubmit(): void {
     const dirPath = this.directoryPath().trim();
     if (!dirPath) return;

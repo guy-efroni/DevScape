@@ -8,23 +8,6 @@
       </span>
     </div>
 
-    <form class="path-control" (ngSubmit)="onSubmit()" (keydown)="onPathKeydown($event)">
-      <input
-        id="dirPath"
-        type="text"
-        class="path-input mono"
-        placeholder="~/projects/devscape/src"
-        [ngModel]="directoryPath()"
-        (ngModelChange)="directoryPath.set($event)"
-        name="directoryPath"
-        aria-label="Project directory path"
-        spellcheck="false"
-        autocomplete="off"
-      />
-      <span class="kbd">⌘K</span>
-      <button type="submit" class="path-go" [disabled]="loading() || !directoryPath().trim()" aria-label="Parse directory">→</button>
-    </form>
-
     <div class="topbar-right">
       <button type="button" class="icon-btn" title="Lock layout" aria-label="Lock layout">
         <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1" fill="none" stroke="currentColor"/><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor"/></svg>
@@ -51,16 +34,23 @@
       <section class="empty-state">
         <div class="empty-head">
           <span class="mono label">TARGET</span>
-          <p class="empty-copy">Select a local TypeScript directory to generate the codebase graph.</p>
+          <p class="empty-copy">Enter a local TypeScript directory to generate the codebase graph.</p>
         </div>
-        <div class="preset-list">
-          @for (preset of presets; track preset.path) {
-            <button type="button" class="preset-row" (click)="selectPreset(preset.path)">
-              <span class="preset-path mono">{{ preset.path }}</span>
-              <span class="preset-label">{{ preset.label }}</span>
-            </button>
-          }
-        </div>
+        <form class="start-search" (ngSubmit)="onSubmit()">
+          <input
+            id="startDirPath"
+            type="text"
+            class="start-search-input mono"
+            placeholder="Search or paste a project path"
+            [ngModel]="directoryPath()"
+            (ngModelChange)="directoryPath.set($event)"
+            name="startDirectoryPath"
+            aria-label="Project directory path"
+            spellcheck="false"
+            autocomplete="off"
+          />
+          <button type="submit" class="start-search-go" [disabled]="loading() || !directoryPath().trim()" aria-label="Parse directory">→</button>
+        </form>
         <div class="meta-grid mono">
           <div class="meta-cell"><span class="meta-k">ENGINE</span><span class="meta-v">AST / TS</span></div>
           <div class="meta-cell"><span class="meta-k">SCOPE</span><span class="meta-v">LOCAL</span></div>
