@@ -22,7 +22,7 @@ export class App {
   protected readonly status = AppStatus;
 
   protected onSubmit(): void {
-    const dirPath = this.directoryPath().trim();
+    const dirPath: string = this.directoryPath().trim();
     if (!dirPath) return;
 
     this.loading.set(true);
@@ -30,7 +30,7 @@ export class App {
     this.graph.set(null);
 
     this._codeGraphService.parse(dirPath).subscribe({
-      next: (result) => {
+      next: (result: ICodeGraph) => {
         this.graph.set(result);
         this.loading.set(false);
       },

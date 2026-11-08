@@ -1,15 +1,15 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { AstParserService } from './ast-parser.service.js';
-import type { ICodeNode, IGraphEdge } from '@devscape/shared';
+import type { ICodeGraph, ICodeNode, IGraphEdge } from '@devscape/shared';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 
-describe('AstParserService', () => {
+describe('AstParserService', (): void => {
   let service: AstParserService;
   let tempDirectory: string;
 
-  beforeAll(() => {
+  beforeAll((): void => {
     service = new AstParserService();
 
     tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'ast-parser-test-'));
@@ -103,12 +103,12 @@ export class UserService {
     );
   });
 
-  afterAll(() => {
+  afterAll((): void => {
     fs.rmSync(tempDirectory, { recursive: true, force: true });
   });
 
-  it('should return an ICodeGraph with nodes and edges', () => {
-    const result = service.parseDirectory(tempDirectory);
+  it('should return an ICodeGraph with nodes and edges', (): void => {
+    const result: ICodeGraph = service.parseDirectory(tempDirectory);
 
     expect(result).toBeDefined();
     expect(result).toHaveProperty('nodes');
@@ -117,11 +117,11 @@ export class UserService {
     expect(Array.isArray(result.edges)).toBe(true);
   });
 
-  it('should extract class declarations as nodes', () => {
-    const result = service.parseDirectory(tempDirectory);
-    const classNames = result.nodes
-      .filter((node: ICodeNode) => node.type === 'class')
-      .map((node: ICodeNode) => node.name);
+  it('should extract class declarations as nodes', (): void => {
+    const result: ICodeGraph = service.parseDirectory(tempDirectory);
+    const classNames: string[] = result.nodes
+      .filter((node: ICodeNode): boolean => node.type === 'class')
+      .map((node: ICodeNode): string => node.name);
 
     expect(classNames).toContain('AppService');
     expect(classNames).toContain('AppController');
@@ -129,58 +129,60 @@ export class UserService {
     expect(classNames).toContain('UserService');
   });
 
-  it('should extract interface declarations as nodes', () => {
-    const result = service.parseDirectory(tempDirectory);
-    const interfaceNames = result.nodes
-      .filter((node: ICodeNode) => node.type === 'interface')
-      .map((node: ICodeNode) => node.name);
+  it('should extract interface declarations as nodes', (): void => {
+    const result: ICodeGraph = service.parseDirectory(tempDirectory);
+    const interfaceNames: string[] = result.nodes
+      .filter((node: ICodeNode): boolean => node.type === 'interface')
+      .map((node: ICodeNode): string => node.name);
 
     expect(interfaceNames).toContain('GreetOptions');
     expect(interfaceNames).toContain('User');
   });
 
-  it('should extract function declarations as nodes', () => {
-    const result = service.parseDirectory(tempDirectory);
-    const functionNames = result.nodes
-      .filter((node: ICodeNode) => node.type === 'function')
-      .map((node: ICodeNode) => node.name);
+  it('should extract function declarations as nodes', (): void => {
+    const result: ICodeGraph = service.parseDirectory(tempDirectory);
+    const functionNames: string[] = result.nodes
+      .filter((node: ICodeNode): boolean => node.type === 'function')
+      .map((node: ICodeNode): string => node.name);
 
     expect(functionNames).toContain('greet');
   });
 
-  it('should extract variable declarations as nodes', () => {
-    const result = service.parseDirectory(tempDirectory);
-    const variableNames = result.nodes
-      .filter((node: ICodeNode) => node.type === 'variable')
-      .map((node: ICodeNode) => node.name);
+  it('should extract variable declarations as nodes', (): void => {
+    const result: ICodeGraph = service.parseDirectory(tempDirectory);
+    const variableNames: string[] = result.nodes
+      .filter((node: ICodeNode): boolean => node.type === 'variable')
+      .map((node: ICodeNode): string => node.name);
 
     expect(variableNames).toContain('DEFAULT_GREETING');
   });
 
-  it('should extract import relationships as edges', () => {
-    const result = service.parseDirectory(tempDirectory);
-    const importEdges = result.edges.filter((edge: IGraphEdge) => edge.relation === 'imports');
+  it('should extract import relationships as edges', (): void => {
+    const result: ICodeGraph = service.parseDirectory(tempDirectory);
+    const importEdges: IGraphEdge[] = result.edges.filter((edge: IGraphEdge): boolean => edge.relation === 'imports');
 
     expect(importEdges.length).toBeGreaterThan(0);
 
-    const controllerImports = importEdges.filter(
-      (edge: IGraphEdge) => edge.source.includes('app.controller') && edge.target.includes('app.service'),
+    const controllerImports: IGraphEdge[] = importEdges.filter(
+      (edge: IGraphEdge): boolean => edge.source.includes('app.controller') && edge.target.includes('app.service'),
     );
     expect(controllerImports.length).toBeGreaterThan(0);
   });
 
-  it('should include nodes from subdirectories', () => {
-    const result = service.parseDirectory(tempDirectory);
-    const subdirectoryNodes = result.nodes.filter((node: ICodeNode) => node.filePath.includes('models'));
+  it('should include nodes from subdirectories', (): void => {
+    const result: ICodeGraph = service.parseDirectory(tempDirectory);
+    const subdirectoryNodes: ICodeNode[] = result.nodes.filter(
+      (node: ICodeNode): boolean => node.filePath.includes('models'),
+    );
 
     expect(subdirectoryNodes.length).toBeGreaterThan(0);
 
-    const nodeNames = subdirectoryNodes.map((node: ICodeNode) => node.name);
+    const nodeNames: string[] = subdirectoryNodes.map((node: ICodeNode): string => node.name);
     expect(nodeNames).toContain('User');
     expect(nodeNames).toContain('UserService');
   });
 
-  it('should return empty graph for non-existent directory', () => {
-    expect(() => service.parseDirectory('/tmp/this-does-not-exist-xyz')).toThrow();
+  it('should return empty graph for non-existent directory', (): void => {
+    expect((): ICodeGraph => service.parseDirectory('/tmp/this-does-not-exist-xyz')).toThrow();
   });
 });

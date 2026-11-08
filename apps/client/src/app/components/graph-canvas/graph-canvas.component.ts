@@ -5,6 +5,7 @@ import {
   OnChanges,
   OnDestroy,
   SimpleChanges,
+  Signal,
   ViewChild,
   WritableSignal,
   computed,
@@ -96,13 +97,13 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
   public readonly selectedElement: WritableSignal<ISelectedElement | null> =
     signal<ISelectedElement | null>(null);
 
-  public readonly legendCounts = computed(() => {
-    const graph = this.graph;
+  public readonly legendCounts: Signal<Array<{ label: string; count: number; tone: string }>> = computed((): Array<{ label: string; count: number; tone: string }> => {
+    const graph: ICodeGraph = this.graph;
     if (!graph) return [] as Array<{ label: string; count: number; tone: string }>;
-    let services = 0;
-    let controllers = 0;
-    let modules = 0;
-    let components = 0;
+    let services: number = 0;
+    let controllers: number = 0;
+    let modules: number = 0;
+    let components: number = 0;
     for (const node of graph.nodes) {
       switch (node.fileRole) {
         case FileRole.Service:
@@ -167,7 +168,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
   }
 
   public onWindowKeydown(event: KeyboardEvent): void {
-    const meta = event.metaKey || event.ctrlKey;
+    const meta: boolean = event.metaKey || event.ctrlKey;
     if (!meta) return;
     if (event.key === KEYBOARD_KEY.Fit) {
       event.preventDefault();
@@ -249,9 +250,9 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
   private _applySelection(nodeId: string): void {
     if (!this._cytoscapeInstance) return;
     this._cytoscapeInstance.batch((): void => {
-      const all = this._cytoscapeInstance!.$(SELECTOR.All);
+      const all: CollectionReturnValue = this._cytoscapeInstance!.$(SELECTOR.All);
       all.removeClass(`${CSS_CLASS.Highlighted} ${CSS_CLASS.Dimmed} ${CSS_CLASS.Hovered}`);
-      const node = this._cytoscapeInstance!.$id(nodeId);
+      const node: CollectionReturnValue = this._cytoscapeInstance!.$id(nodeId);
       all.addClass(CSS_CLASS.Dimmed);
       node.removeClass(CSS_CLASS.Dimmed).addClass(CSS_CLASS.Highlighted);
       node.connectedEdges().removeClass(CSS_CLASS.Dimmed).addClass(CSS_CLASS.Highlighted);
@@ -338,7 +339,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       return null;
     };
 
-    let edgeIndex = 0;
+    let edgeIndex: number = 0;
     const addedEdgeKeys: Set<string> = new Set<string>();
 
     for (const edge of this.graph.edges) {
@@ -348,7 +349,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       if (resolvedSource && resolvedTarget) {
         if (resolvedSource === resolvedTarget) continue;
 
-        const edgeKey = `${resolvedSource}${PATH_TEXT.EdgeKeySeparator}${resolvedTarget}${PATH_TEXT.EdgeKeyMetaSeparator}${edge.relation}`;
+        const edgeKey: string = `${resolvedSource}${PATH_TEXT.EdgeKeySeparator}${resolvedTarget}${PATH_TEXT.EdgeKeyMetaSeparator}${edge.relation}`;
         if (!addedEdgeKeys.has(edgeKey)) {
           addedEdgeKeys.add(edgeKey);
           elements.push(
@@ -369,7 +370,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           elements.push(this._createExternalNodeElement(edge.target));
         }
 
-        const edgeKey = `${resolvedSource}${PATH_TEXT.EdgeKeySeparator}${edge.target}${PATH_TEXT.EdgeKeyMetaSeparator}${edge.relation}`;
+        const edgeKey: string = `${resolvedSource}${PATH_TEXT.EdgeKeySeparator}${edge.target}${PATH_TEXT.EdgeKeyMetaSeparator}${edge.relation}`;
         if (!addedEdgeKeys.has(edgeKey)) {
           addedEdgeKeys.add(edgeKey);
           elements.push(
@@ -384,7 +385,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       }
     }
 
-    const dpr = Math.max(window.devicePixelRatio || 1, GRAPH_DEFAULTS.PixelRatioMin);
+    const dpr: number = Math.max(window.devicePixelRatio || 1, GRAPH_DEFAULTS.PixelRatioMin);
     this._cytoscapeInstance = cytoscape({
       container: this.cyContainer.nativeElement,
       elements,
@@ -512,7 +513,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
     this._cytoscapeInstance.on(CY_EVENT.Tap, SELECTOR.Edge, (event: EventObject): void => {
       const edgeData = event.target.data() as IEdgeElementData;
       this._cytoscapeInstance!.batch((): void => {
-        const all = this._cytoscapeInstance!.$(SELECTOR.All);
+        const all: CollectionReturnValue = this._cytoscapeInstance!.$(SELECTOR.All);
         all.removeClass(`${CSS_CLASS.Highlighted} ${CSS_CLASS.Dimmed} ${CSS_CLASS.Hovered}`);
         all.addClass(CSS_CLASS.Dimmed);
         event.target.removeClass(CSS_CLASS.Dimmed).addClass(CSS_CLASS.Highlighted);
@@ -550,23 +551,25 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
     filePath: string | undefined,
     label: string,
   ): { extension?: string; displayPath?: string } {
-    const path = filePath ?? '';
-    const normalized = path ? path.replace(PATH_TEXT.WindowsSeparatorPattern, PATH_TEXT.Separator) : '';
-    const name = normalized ? normalized.split(PATH_TEXT.Separator).pop() ?? label : label;
-    const dot = name.lastIndexOf(PATH_TEXT.ExtensionDot);
-    const extension = dot > 0 ? name.slice(dot) : undefined;
-    const displayPath = normalized || undefined;
+    const path: string = filePath ?? '';
+    const normalized: string = path ? path.replace(PATH_TEXT.WindowsSeparatorPattern, PATH_TEXT.Separator) : '';
+    const name: string = normalized ? normalized.split(PATH_TEXT.Separator).pop() ?? label : label;
+    const dot: number = name.lastIndexOf(PATH_TEXT.ExtensionDot);
+    const extension: string | undefined = dot > 0 ? name.slice(dot) : undefined;
+    const displayPath: string | undefined = normalized || undefined;
     return { extension, displayPath };
   }
 
   private _computeMetrics(nodeId: string): ISelectedElement['metrics'] {
-    let inbound = 0;
-    let outbound = 0;
+    let inbound: number = 0;
+    let outbound: number = 0;
     for (const edge of this.graph.edges) {
       if (edge.source === nodeId) outbound++;
       if (edge.target === nodeId) inbound++;
     }
-    const node = this.graph.nodes.find((graphNode) => graphNode.id === nodeId);
+    const node: ICodeNode | undefined = this.graph.nodes.find(
+      (graphNode: ICodeNode): boolean => graphNode.id === nodeId,
+    );
     return {
       loc: node?.loc ?? null,
       cyclomatic: node?.cyclomaticComplexity ?? null,

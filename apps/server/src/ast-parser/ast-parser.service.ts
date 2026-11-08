@@ -30,7 +30,7 @@ export class AstParserService {
    * return an ICodeGraph of extracted nodes and edges.
    */
   parseDirectory(directoryPath: string): ICodeGraph {
-    const resolvedPath = path.resolve(directoryPath);
+    const resolvedPath: string = path.resolve(directoryPath);
 
     if (!fs.existsSync(resolvedPath)) {
       throw new BadRequestException(
@@ -42,13 +42,13 @@ export class AstParserService {
       throw new BadRequestException(`Path is not a directory: ${resolvedPath}`);
     }
 
-    const tsFiles = this._collectTsFiles(resolvedPath);
+    const tsFiles: string[] = this._collectTsFiles(resolvedPath);
 
     if (tsFiles.length === 0) {
       return { nodes: [], edges: [] };
     }
 
-    const program = ts.createProgram(tsFiles, {
+    const program: ts.Program = ts.createProgram(tsFiles, {
       target: ts.ScriptTarget.ES2022,
       module: ts.ModuleKind.ESNext,
       allowJs: false,
@@ -56,15 +56,15 @@ export class AstParserService {
       skipLibCheck: true,
     });
 
-    const sourceFiles = program.getSourceFiles().filter((sourceFile) => {
+    const sourceFiles: readonly ts.SourceFile[] = program.getSourceFiles().filter((sourceFile: ts.SourceFile): boolean => {
       if (sourceFile.isDeclarationFile) return false;
-      const normalized = path.normalize(sourceFile.fileName);
+      const normalized: string = path.normalize(sourceFile.fileName);
       return normalized.startsWith(resolvedPath);
     });
 
     // Map of all known relative file paths in this project
-    const knownFiles = new Set(
-      sourceFiles.map((sourceFile) => this._toRelativePath(resolvedPath, sourceFile.fileName)),
+    const knownFiles = new Set<string>(
+      sourceFiles.map((sourceFile: ts.SourceFile): string => this._toRelativePath(resolvedPath, sourceFile.fileName)),
     );
 
     const nodes: ICodeNode[] = [];
@@ -72,9 +72,9 @@ export class AstParserService {
 
     // Pass 1: Extract all file nodes and AST entities (classes, interfaces, functions, variables)
     for (const sourceFile of sourceFiles) {
-      const relativeFilePath = this._toRelativePath(resolvedPath, sourceFile.fileName);
+      const relativeFilePath: string = this._toRelativePath(resolvedPath, sourceFile.fileName);
 
-      const fileRole = this._detectFileRole(sourceFile, relativeFilePath);
+      const fileRole: FileRole = this._detectFileRole(sourceFile, relativeFilePath);
 
       // 1. Extract file-level node
       nodes.push({
@@ -99,7 +99,7 @@ export class AstParserService {
 
     // Pass 2: Extract and resolve relationship edges
     for (const sourceFile of sourceFiles) {
-      const relativeFilePath = this._toRelativePath(resolvedPath, sourceFile.fileName);
+      const relativeFilePath: string = this._toRelativePath(resolvedPath, sourceFile.fileName);
 
       this._extractEdges(sourceFile, relativeFilePath, edges, knownFiles, symbolMapByName);
     }
@@ -119,11 +119,11 @@ export class AstParserService {
     sourceFile: ts.SourceFile,
     relativeFilePath: string,
   ): FileRole {
-    const baseName = path.basename(relativeFilePath).toLowerCase();
+    const baseName: string = path.basename(relativeFilePath).toLowerCase();
 
     // Check by file naming conventions
-    const conventionRole = FILE_ROLE_BY_SUFFIX.find(([suffix]) =>
-      baseName.endsWith(suffix),
+    const conventionRole: FileRole | undefined = FILE_ROLE_BY_SUFFIX.find(
+      ([suffix]: readonly [string, FileRole]): boolean => baseName.endsWith(suffix),
     )?.[1];
     if (conventionRole) return conventionRole;
 
@@ -133,24 +133,24 @@ export class AstParserService {
     // Check by AST decorators
     let detectedFromAst: FileRole | null = null;
 
-    const visit = (node: ts.Node): void => {
+    const visit = (astNode: ts.Node): void => {
       if (detectedFromAst) return;
 
-      if (ts.isClassDeclaration(node) && node.modifiers) {
-        for (const modifier of node.modifiers) {
+      if (ts.isClassDeclaration(astNode) && astNode.modifiers) {
+        for (const modifier of astNode.modifiers) {
           if (ts.isDecorator(modifier)) {
-            const expr = modifier.expression;
-            const decoratorName = ts.isCallExpression(expr)
+            const expr: ts.Expression = modifier.expression;
+            const decoratorName: string = ts.isCallExpression(expr)
               ? expr.expression.getText(sourceFile)
               : expr.getText(sourceFile);
 
-            const decoratorRole = FILE_ROLE_BY_DECORATOR[decoratorName];
+            const decoratorRole: FileRole | undefined = FILE_ROLE_BY_DECORATOR[decoratorName];
             if (decoratorRole) detectedFromAst = decoratorRole;
           }
         }
       }
 
-      ts.forEachChild(node, visit);
+      ts.forEachChild(astNode, visit);
     };
 
     ts.forEachChild(sourceFile, visit);
@@ -164,10 +164,10 @@ export class AstParserService {
 
   private _collectTsFiles(directoryPath: string): string[] {
     const results: string[] = [];
-    const entries = fs.readdirSync(directoryPath, { withFileTypes: true });
+    const entries: fs.Dirent[] = fs.readdirSync(directoryPath, { withFileTypes: true });
 
     for (const entry of entries) {
-      const fullPath = path.join(directoryPath, entry.name);
+      const fullPath: string = path.join(directoryPath, entry.name);
 
       if (entry.isDirectory()) {
         if (
@@ -211,8 +211,8 @@ export class AstParserService {
     relativeFilePath: string,
     nodes: ICodeNode[],
   ): void {
-    const loc = this._countLoc(sourceFile);
-    const fileNode = nodes.find((codeNode) => codeNode.id === relativeFilePath);
+    const loc: number = this._countLoc(sourceFile);
+    const fileNode: ICodeNode | undefined = nodes.find((codeNode: ICodeNode): boolean => codeNode.id === relativeFilePath);
     if (fileNode) {
       fileNode.loc = loc;
       fileNode.cyclomaticComplexity = this._computeCyclomaticComplexity(sourceFile);
@@ -228,8 +228,8 @@ export class AstParserService {
       } else if (ts.isVariableStatement(astNode)) {
         for (const variableDeclaration of astNode.declarationList.declarations) {
           if (ts.isIdentifier(variableDeclaration.name)) {
-            const init = variableDeclaration.initializer;
-            const isFnLike = !!init && (ts.isArrowFunction(init) || ts.isFunctionExpression(init));
+            const init: ts.Expression | undefined = variableDeclaration.initializer;
+            const isFnLike: boolean = !!init && (ts.isArrowFunction(init) || ts.isFunctionExpression(init));
             nodes.push(
               this._createNode(
                 variableDeclaration.name.text,
@@ -250,19 +250,19 @@ export class AstParserService {
   }
 
   private _countLoc(sourceFile: ts.SourceFile): number {
-    const text = sourceFile.getFullText();
+    const text: string = sourceFile.getFullText();
     if (!text) return 0;
     return text.split(/\r?\n/).length;
   }
 
   private _countNodeLoc(astNode: ts.Node, sourceFile: ts.SourceFile): number {
-    const text = astNode.getText(sourceFile);
+    const text: string = astNode.getText(sourceFile);
     if (!text) return 0;
     return text.split(/\r?\n/).length;
   }
 
   private _computeCyclomaticComplexity(rootNode: ts.Node): number {
-    let complexity = 1;
+    let complexity: number = 1;
     const visit = (astNode: ts.Node): void => {
       if (
         ts.isIfStatement(astNode) ||
@@ -278,7 +278,7 @@ export class AstParserService {
         complexity++;
       }
       if (ts.isBinaryExpression(astNode)) {
-        const operatorKind = astNode.operatorToken.kind;
+        const operatorKind: ts.SyntaxKind = astNode.operatorToken.kind;
         if (
           operatorKind === ts.SyntaxKind.AmpersandAmpersandToken ||
           operatorKind === ts.SyntaxKind.BarBarToken ||
@@ -350,14 +350,14 @@ export class AstParserService {
       return importSpecifier; // External module like '@nestjs/common'
     }
 
-    const sourceDirectory = path.dirname(relativeFilePath);
-    let resolved = this._toPosixPath(
+    const sourceDirectory: string = path.dirname(relativeFilePath);
+    let resolved: string = this._toPosixPath(
       path.normalize(path.join(sourceDirectory, importSpecifier)),
     );
     resolved = resolved.replace(MODULE_EXTENSION_PATTERN, '');
 
-    const tsFilePath = resolved + TS_EXTENSION;
-    const barrelFilePath = resolved + PATH_SEPARATOR + INDEX_FILE_NAME;
+    const tsFilePath: string = resolved + TS_EXTENSION;
+    const barrelFilePath: string = resolved + PATH_SEPARATOR + INDEX_FILE_NAME;
 
     if (knownFiles.has(tsFilePath)) return tsFilePath;
     if (knownFiles.has(barrelFilePath)) return barrelFilePath;
@@ -376,11 +376,11 @@ export class AstParserService {
     for (const statement of sourceFile.statements) {
       if (!ts.isImportDeclaration(statement)) continue;
 
-      const moduleSpecifier = statement.moduleSpecifier;
+      const moduleSpecifier: ts.Expression = statement.moduleSpecifier;
       if (!ts.isStringLiteral(moduleSpecifier)) continue;
 
-      const rawSpecifier = moduleSpecifier.text;
-      const target = this._resolveImportTarget(relativeFilePath, rawSpecifier, knownFiles);
+      const rawSpecifier: string = moduleSpecifier.text;
+      const target: string = this._resolveImportTarget(relativeFilePath, rawSpecifier, knownFiles);
 
       edges.push({
         source: relativeFilePath,
@@ -397,18 +397,18 @@ export class AstParserService {
     edges: IGraphEdge[],
     symbolMapByName: Map<string, ICodeNode>,
   ): void {
-    const visit = (node: ts.Node): void => {
-      if ((ts.isClassDeclaration(node) || ts.isInterfaceDeclaration(node)) && node.name) {
-        const entityName = node.name.text;
-        const sourceId = `${relativeFilePath}${NODE_ID_SEPARATOR}${entityName}`;
+    const visit = (astNode: ts.Node): void => {
+      if ((ts.isClassDeclaration(astNode) || ts.isInterfaceDeclaration(astNode)) && astNode.name) {
+        const entityName: string = astNode.name.text;
+        const sourceId: string = `${relativeFilePath}${NODE_ID_SEPARATOR}${entityName}`;
 
-        if (node.heritageClauses) {
-          for (const clause of node.heritageClauses) {
-            for (const type of clause.types) {
-              const baseTypeName = type.expression.getText(sourceFile);
+        if (astNode.heritageClauses) {
+          for (const clause of astNode.heritageClauses) {
+            for (const typeNode of clause.types) {
+              const baseTypeName: string = typeNode.expression.getText(sourceFile);
               // Resolve target: if symbol exists in our graph, link to its exact node ID
-              const matchingSymbol = symbolMapByName.get(baseTypeName);
-              const target = matchingSymbol ? matchingSymbol.id : baseTypeName;
+              const matchingSymbol: ICodeNode | undefined = symbolMapByName.get(baseTypeName);
+              const target: string = matchingSymbol ? matchingSymbol.id : baseTypeName;
 
               edges.push({
                 source: sourceId,
@@ -420,7 +420,7 @@ export class AstParserService {
         }
       }
 
-      ts.forEachChild(node, visit);
+      ts.forEachChild(astNode, visit);
     };
 
     ts.forEachChild(sourceFile, visit);
@@ -433,14 +433,14 @@ export class AstParserService {
     edges: IGraphEdge[],
     symbolMapByName: Map<string, ICodeNode>,
   ): void {
-    const visit = (node: ts.Node): void => {
-      if (ts.isCallExpression(node)) {
-        const callee = node.expression;
+    const visit = (astNode: ts.Node): void => {
+      if (ts.isCallExpression(astNode)) {
+        const callee: ts.Expression = astNode.expression;
 
         if (ts.isIdentifier(callee)) {
-          const calleeName = callee.text;
-          const matchingSymbol = symbolMapByName.get(calleeName);
-          const target = matchingSymbol ? matchingSymbol.id : calleeName;
+          const calleeName: string = callee.text;
+          const matchingSymbol: ICodeNode | undefined = symbolMapByName.get(calleeName);
+          const target: string = matchingSymbol ? matchingSymbol.id : calleeName;
 
           edges.push({
             source: relativeFilePath,
@@ -450,7 +450,7 @@ export class AstParserService {
         }
       }
 
-      ts.forEachChild(node, visit);
+      ts.forEachChild(astNode, visit);
     };
 
     ts.forEachChild(sourceFile, visit);

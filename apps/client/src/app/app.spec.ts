@@ -1,10 +1,10 @@
-import { TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { App } from './app';
 
-describe('App', () => {
-  beforeEach(async () => {
+describe('App', (): void => {
+  beforeEach(async (): Promise<void> => {
     await TestBed.configureTestingModule({
       imports: [App],
       providers: [
@@ -14,16 +14,16 @@ describe('App', () => {
     }).compileComponents();
   });
 
-  it('should create the app', () => {
-    const fixture = TestBed.createComponent(App);
-    const app = fixture.componentInstance;
+  it('should create the app', (): void => {
+    const fixture: ComponentFixture<App> = TestBed.createComponent(App);
+    const app: App = fixture.componentInstance;
     expect(app).toBeTruthy();
   });
 
-  it('should render the heading', async () => {
-    const fixture = TestBed.createComponent(App);
+  it('should render the heading', async (): Promise<void> => {
+    const fixture: ComponentFixture<App> = TestBed.createComponent(App);
     await fixture.whenStable();
-    const compiled = fixture.nativeElement as HTMLElement;
+    const compiled: HTMLElement = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('h1')?.textContent).toContain('DevScape');
   });
 });

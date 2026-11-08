@@ -7,10 +7,10 @@ import { ParseRequestDto } from './dto/parse-request.dto.js';
 
 @Controller(API_ROUTE_PREFIX)
 export class AstParserController {
-  constructor(private readonly astParserService: AstParserService) {}
+  constructor(private readonly _astParserService: AstParserService) {}
 
   @Post(PARSE_ROUTE)
   parse(@Body() body: ParseRequestDto): ICodeGraph {
-    return this.astParserService.parseDirectory(body.directoryPath);
+    return this._astParserService.parseDirectory(body.directoryPath);
   }
 }

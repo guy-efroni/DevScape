@@ -16,12 +16,12 @@ export const INSPECTOR_UI = {
   metricFallback: '—',
 } as const;
 
-const PATH_SEPARATOR = '/';
-const WINDOWS_PATH_SEPARATOR_PATTERN = /\\/g;
-const NODE_ID_FRAGMENT_SEPARATOR = '#';
-const SCOPED_PACKAGE_PATTERN = /(@[^/]+\/[^/]+)/;
+const PATH_SEPARATOR: string = '/';
+const WINDOWS_PATH_SEPARATOR_PATTERN: RegExp = /\\/g;
+const NODE_ID_FRAGMENT_SEPARATOR: string = '#';
+const SCOPED_PACKAGE_PATTERN: RegExp = /(@[^/]+\/[^/]+)/;
 const MODULE_EXTENSION_PATTERN = /\.(?:d\.)?[cm]?[jt]sx?$/i;
-const REFERENCE_KEYWORD_EXTENDS = 'extends';
+const REFERENCE_KEYWORD_EXTENDS: string = 'extends';
 
 @Component({
   selector: 'app-inspector-card',
@@ -41,9 +41,9 @@ export class InspectorCardComponent {
   }
 
   public referenceLine(relation: ISelectedRelation): string {
-    const raw = relation.targetId ?? relation.connectedNode;
-    const spec = this._specifier(raw);
-    const name = this._displayName(relation.connectedNode);
+    const raw: string = relation.targetId ?? relation.connectedNode;
+    const spec: string = this._specifier(raw);
+    const name: string = this._displayName(relation.connectedNode);
     switch (relation.relation) {
       case EdgeRelation.Imports:
         return `import { ${name} } from '${spec}';`;
@@ -58,18 +58,18 @@ export class InspectorCardComponent {
 
   private _specifier(id: string): string {
     if (!id) return id;
-    const clean = id.split(NODE_ID_FRAGMENT_SEPARATOR)[0].replace(WINDOWS_PATH_SEPARATOR_PATTERN, PATH_SEPARATOR);
+    const clean: string = id.split(NODE_ID_FRAGMENT_SEPARATOR)[0].replace(WINDOWS_PATH_SEPARATOR_PATTERN, PATH_SEPARATOR);
     if (!clean.startsWith('.') && !clean.includes(PATH_SEPARATOR)) return clean;
-    const scoped = clean.match(SCOPED_PACKAGE_PATTERN);
+    const scoped: RegExpMatchArray | null = clean.match(SCOPED_PACKAGE_PATTERN);
     if (scoped) return scoped[1];
-    const base = clean.split(PATH_SEPARATOR).pop() ?? clean;
+    const base: string = clean.split(PATH_SEPARATOR).pop() ?? clean;
     return base.replace(MODULE_EXTENSION_PATTERN, '');
   }
 
   private _displayName(id: string): string {
     if (!id) return id;
-    const base = id.replace(WINDOWS_PATH_SEPARATOR_PATTERN, PATH_SEPARATOR).split(PATH_SEPARATOR).pop() ?? id;
-    const hash = base.indexOf(NODE_ID_FRAGMENT_SEPARATOR);
+    const base: string = id.replace(WINDOWS_PATH_SEPARATOR_PATTERN, PATH_SEPARATOR).split(PATH_SEPARATOR).pop() ?? id;
+    const hash: number = base.indexOf(NODE_ID_FRAGMENT_SEPARATOR);
     return hash >= 0 ? base.slice(hash + 1) : base;
   }
 }
