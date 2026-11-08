@@ -1,7 +1,7 @@
 ﻿<div class="canvas-wrapper">
   <div #cyContainer class="cy-viewport"></div>
 
-  <div class="control-bar mono" role="toolbar" aria-label="Graph controls">
+  <div class="control-bar" role="toolbar" aria-label="Graph controls">
     <div class="segmented">
       <button
         type="button"
@@ -27,6 +27,7 @@
     </div>
     <span class="bar-sep" aria-hidden="true"></span>
     <span class="zoom-readout">{{ zoomPercent() }}%</span>
+    <button type="button" class="bar-btn" (click)="fitView()" title="Fit to screen">Fit</button>
     <button type="button" class="bar-btn" (click)="fitView()" title="Reset view (⌘0)">
       <span class="bar-btn-label">Reset</span><span class="kbd">⌘0</span>
     </button>

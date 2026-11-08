@@ -1,12 +1,18 @@
 :root {
-  --bg-canvas: #000000;
-  --bg-surface: #09090b;
-  --border: #18181b;
-  --line: #27272a;
-  --text: #e4e4e7;
-  --text-muted: #71717a;
-  --text-dim: #52525b;
-  --accent: #a1a1aa;
+  --bg-canvas: #111318;
+  --bg-surface: #161a22;
+  --bg-elevated: #1b2029;
+  --border: #292f38;
+  --line: #343b46;
+  --dot: rgba(146, 155, 170, 0.12);
+  --text: #e1e6ed;
+  --text-muted: #929baa;
+  --text-dim: #6f7888;
+  --accent: #5794e8;
+  --accent-muted: rgba(87, 148, 232, 0.16);
+  --success: #45b98a;
+  --purple: #a78bfa;
+  --danger: #e06c75;
   --radius: 4px;
   --font-ui: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', 'Cascadia Code', ui-monospace, monospace;

@@ -25,10 +25,11 @@ export type AppStatus = (typeof AppStatus)[keyof typeof AppStatus];
 
 export const APP_UI = {
   wordmark: 'DevScape',
+  noProject: 'No project',
   status: {
     disconnected: 'Disconnected',
     parsing: 'Parsing',
-    connected: 'Connected to local server',
+    connected: 'Connected',
   },
   errorTag: 'ERR',
   start: {

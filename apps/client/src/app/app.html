@@ -2,22 +2,38 @@
   <header class="topbar">
     <div class="topbar-left">
       <span class="wordmark">{{ ui.wordmark }}</span>
+      <span class="project-name mono" [title]="directoryPath().trim() || ui.noProject">{{ directoryPath().trim() || ui.noProject }}</span>
       <span class="status-pill" [attr.data-state]="error() ? status.Error : loading() ? status.Busy : status.Ok">
         <span class="status-dot" aria-hidden="true"></span>
-        <span class="status-text mono">{{ error() ? ui.status.disconnected : loading() ? ui.status.parsing : ui.status.connected }}</span>
+        <span class="status-text">{{ error() ? ui.status.disconnected : loading() ? ui.status.parsing : ui.status.connected }}</span>
       </span>
     </div>
 
-    <div class="topbar-right">
+    <form class="topbar-path" (ngSubmit)="onSubmit()">
+      <input
+        type="text"
+        class="topbar-path-input mono"
+        [placeholder]="ui.start.inputPlaceholder"
+        [ngModel]="directoryPath()"
+        (ngModelChange)="directoryPath.set($event)"
+        name="directoryPath"
+        aria-label="Project directory path"
+        spellcheck="false"
+        autocomplete="off"
+      />
+      <button type="submit" class="topbar-path-go" [disabled]="loading() || !directoryPath().trim()" aria-label="Parse directory">→</button>
+    </form>
+
+    <div class="topbar-right action-bar">
       <button type="button" class="icon-btn" title="Lock layout" aria-label="Lock layout">
-        <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1" fill="none" stroke="currentColor"/><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor"/></svg>
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1" fill="none" stroke="currentColor"/><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor"/></svg>
       </button>
-      <div class="segmented mono" aria-label="Render mode">
+      <div class="segmented" aria-label="Render mode">
         <button type="button" class="seg active" title="2D Canvas">2D</button>
         <button type="button" class="seg" title="WebGL" disabled>WebGL</button>
       </div>
       <button type="button" class="icon-btn" title="Export graph" aria-label="Export graph">
-        <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M8 2v8M5 7l3 3 3-3M3 11v2h10v-2" fill="none" stroke="currentColor" stroke-linecap="square"/></svg>
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 2v8M5 7l3 3 3-3M3 11v2h10v-2" fill="none" stroke="currentColor" stroke-linecap="square"/></svg>
       </button>
     </div>
   </header>

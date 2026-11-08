@@ -67,22 +67,22 @@ export const GRAPH_LAYOUT = {
 
 export const GRAPH_STYLE = {
   NodeFontSize: '11px',
-  NodeFontWeight: 600,
+  NodeFontWeight: 500,
   NodeBorderWidth: 1,
-  NodeHeight: 24,
-  NodePadding: '8px',
-  FileFontWeight: 600,
+  NodeHeight: 26,
+  NodePadding: '10px',
+  FileFontWeight: 500,
   ClassBorderWidth: 1,
   EdgeWidth: 1,
-  EdgeOpacity: 0.3,
-  EdgeArrowScale: 0.7,
-  ActiveEdgeWidth: 2,
+  EdgeOpacity: 0.45,
+  EdgeArrowScale: 0.65,
+  ActiveEdgeWidth: 1.5,
   ActiveEdgeFontSize: '10px',
-  SelectedNodeBorderWidth: 1,
+  SelectedNodeBorderWidth: 1.5,
   SelectedNodeOpacity: 1,
-  SelectedEdgeWidth: 2,
+  SelectedEdgeWidth: 1.5,
   SelectedEdgeOpacity: 1,
-  DimmedOpacity: 0.12,
+  DimmedOpacity: 0.16,
 } as const;
 
 export const LegendTone = {
@@ -140,15 +140,15 @@ export const CY_FONT = {
 } as const;
 
 export const CY_EDGE = {
-  Color: '#3f3f46',
-  DimColor: '#18181b',
-  ActiveColor: '#3b82f6',
-  OpacityHidden: 0.08,
-  TextOpacityDimmed: 0.2,
+  Color: '#3d4552',
+  DimColor: '#1b2029',
+  ActiveColor: '#5794e8',
+  OpacityHidden: 0.06,
+  TextOpacityDimmed: 0.25,
   ZNode: 10,
   ZEdge: 9,
   TransitionDurationMs: 80,
-  NodeTransition: 'border-color, color, line-color, target-arrow-color, opacity, width',
+  NodeTransition: 'border-color, background-color, color, line-color, target-arrow-color, opacity, width',
   EdgeTransition: 'line-color, line-opacity, target-arrow-color, width, opacity',
   ArrowTriangle: 'triangle',
   CurveTaxi: 'taxi',
@@ -161,7 +161,7 @@ export const CY_EDGE = {
 } as const;
 
 export const CY_NODE = {
-  TextWhite: '#ffffff',
+  Text: '#e1e6ed',
   Shape: 'round-rectangle',
   CornerRadius: '4px',
   BorderSolid: 'solid',
