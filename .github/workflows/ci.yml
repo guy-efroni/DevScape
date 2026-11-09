@@ -30,11 +30,6 @@ jobs:
             apps/server/package-lock.json
             apps/client/package-lock.json
             packages/shared/package-lock.json
-          cache-dependency-path: |
-            package-lock.json
-            apps/server/package-lock.json
-            apps/client/package-lock.json
-            packages/shared/package-lock.json
 
       - name: Install dependencies
         run: |
@@ -49,7 +44,7 @@ jobs:
       - name: Build and test Angular client (headless)
         run: |
           npm run build --prefix apps/client
-          npm test --prefix apps/client -- --watch=false --browsers=ChromeHeadless
+          npm test --prefix apps/client -- --watch=false
 
   deploy-dev:
     if: github.ref == 'refs/heads/dev' && github.event_name == 'push'
