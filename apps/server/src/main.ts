@@ -19,6 +19,7 @@ async function bootstrap(): Promise<void> {
     methods: ALLOWED_CORS_METHODS,
   });
 
-  await app.listen(process.env.PORT ?? DEFAULT_PORT);
+  const port: number = Number(process.env.PORT) || DEFAULT_PORT;
+  await app.listen(port, '0.0.0.0');
 }
 await bootstrap();
