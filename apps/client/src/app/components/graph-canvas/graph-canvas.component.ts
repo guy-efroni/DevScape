@@ -5,10 +5,14 @@ import {
   OnChanges,
   OnDestroy,
   SimpleChanges,
+  Signal,
   ViewChild,
   WritableSignal,
+  computed,
+  inject,
   signal,
 } from '@angular/core';
+import { NgZone } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import cytoscape, { CollectionReturnValue, Core, ElementDefinition, EventObject } from 'cytoscape';
 import dagre from 'cytoscape-dagre';
@@ -29,18 +33,27 @@ import { GraphElementGroup } from './enums/graph-element-group.enum';
 import { RelationDirection } from './enums/relation-direction.enum';
 import {
   CSS_CLASS,
+  CY_DATA,
+  CY_EDGE,
+  CY_EVENT,
+  CY_FONT,
+  CY_NODE,
   EDGE_LABEL_SEPARATOR,
   EXTERNAL_NODE_TYPE,
   FILE_LABEL_PREFIX,
+  GRAPH_DEFAULTS,
   GRAPH_LAYOUT,
   GRAPH_STYLE,
+  KEYBOARD_KEY,
+  LEGEND_LABEL,
   LayoutDirection,
   LayoutName,
+  LegendTone,
+  PATH_TEXT,
   RankDirection,
   RELATIONSHIP_ELEMENT_TYPE,
   SELECTOR,
   ViewFilter,
-  edgeRelationSelector,
   nodeLabelContainsSelector,
   nodeRoleSelector,
   nodeTypeSelector,
@@ -58,11 +71,15 @@ cytoscape.use(dagre);
   imports: [FormsModule, InspectorCardComponent],
   templateUrl: './graph-canvas.component.html',
   styleUrl: './graph-canvas.component.scss',
+  host: {
+    '(window:keydown)': 'onWindowKeydown($event)',
+  },
 })
 export class GraphCanvasComponent implements OnChanges, OnDestroy {
   @Input({ required: true }) public graph!: ICodeGraph;
   @ViewChild('cyContainer', { static: true }) public cyContainer!: ElementRef<HTMLDivElement>;
 
+  private readonly _zone: NgZone = inject(NgZone);
   private _cytoscapeInstance: Core | null = null;
 
   public readonly viewFilter: WritableSignal<ViewFilterType> = signal<ViewFilterType>(
@@ -73,11 +90,49 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
   );
   public readonly showExternal: WritableSignal<boolean> = signal<boolean>(false);
   public readonly searchTerm: WritableSignal<string> = signal<string>('');
+  public readonly zoomPercent: WritableSignal<number> = signal<number>(GRAPH_DEFAULTS.ZoomPercent);
   public readonly ViewFilter = ViewFilter;
   public readonly LayoutDirection = LayoutDirection;
 
   public readonly selectedElement: WritableSignal<ISelectedElement | null> =
     signal<ISelectedElement | null>(null);
+
+  public readonly legendCounts: Signal<Array<{ label: string; count: number; tone: string }>> = computed((): Array<{ label: string; count: number; tone: string }> => {
+    const graph: ICodeGraph = this.graph;
+    if (!graph) return [] as Array<{ label: string; count: number; tone: string }>;
+    let services: number = 0;
+    let controllers: number = 0;
+    let modules: number = 0;
+    let components: number = 0;
+    for (const node of graph.nodes) {
+      switch (node.fileRole) {
+        case FileRole.Service:
+          services++;
+          break;
+        case FileRole.Controller:
+          controllers++;
+          break;
+        case FileRole.Module:
+          modules++;
+          break;
+        case FileRole.Component:
+          components++;
+          break;
+        default:
+          break;
+      }
+    }
+    const items: Array<{ label: string; count: number; tone: string }> = [];
+    if (services) items.push({ label: LEGEND_LABEL.Services, count: services, tone: LegendTone.Service });
+    if (controllers) items.push({ label: LEGEND_LABEL.Controllers, count: controllers, tone: LegendTone.Controller });
+    if (modules) items.push({ label: LEGEND_LABEL.Modules, count: modules, tone: LegendTone.Module });
+    if (components) items.push({ label: LEGEND_LABEL.Components, count: components, tone: LegendTone.Component });
+    if (!items.length) {
+      items.push({ label: LEGEND_LABEL.Nodes, count: graph.nodes.length, tone: LegendTone.Neutral });
+      items.push({ label: LEGEND_LABEL.Edges, count: graph.edges.length, tone: LegendTone.Neutral });
+    }
+    return items;
+  });
 
   public ngOnChanges(changes: SimpleChanges): void {
     if (changes['graph'] && this.graph) {
@@ -109,6 +164,16 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
 
   public fitView(): void {
     this._cytoscapeInstance?.fit(undefined, GRAPH_LAYOUT.FitPadding);
+    this._syncZoom();
+  }
+
+  public onWindowKeydown(event: KeyboardEvent): void {
+    const meta: boolean = event.metaKey || event.ctrlKey;
+    if (!meta) return;
+    if (event.key === KEYBOARD_KEY.Fit) {
+      event.preventDefault();
+      this.fitView();
+    }
   }
 
   public onSearchChange(term: string): void {
@@ -133,6 +198,11 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       matchedNodes.removeClass(CSS_CLASS.Dimmed).addClass(CSS_CLASS.Highlighted);
       matchedNodes.connectedEdges().removeClass(CSS_CLASS.Dimmed).addClass(CSS_CLASS.Highlighted);
     });
+  }
+
+  private _syncZoom(): void {
+    if (!this._cytoscapeInstance) return;
+    this.zoomPercent.set(Math.round(this._cytoscapeInstance.zoom() * GRAPH_DEFAULTS.ZoomPercent));
   }
 
   private _runLayout(): void {
@@ -175,6 +245,26 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       ...sharedLayoutOptions,
       name: LayoutName.Grid,
     };
+  }
+
+  private _applySelection(nodeId: string): void {
+    if (!this._cytoscapeInstance) return;
+    this._cytoscapeInstance.batch((): void => {
+      const all: CollectionReturnValue = this._cytoscapeInstance!.$(SELECTOR.All);
+      all.removeClass(`${CSS_CLASS.Highlighted} ${CSS_CLASS.Dimmed} ${CSS_CLASS.Hovered}`);
+      const node: CollectionReturnValue = this._cytoscapeInstance!.$id(nodeId);
+      all.addClass(CSS_CLASS.Dimmed);
+      node.removeClass(CSS_CLASS.Dimmed).addClass(CSS_CLASS.Highlighted);
+      node.connectedEdges().removeClass(CSS_CLASS.Dimmed).addClass(CSS_CLASS.Highlighted);
+      node.neighborhood(CY_NODE.Neighborhood).removeClass(CSS_CLASS.Dimmed);
+    });
+  }
+
+  private _clearSelectionClasses(): void {
+    if (!this._cytoscapeInstance) return;
+    this._cytoscapeInstance
+      .$(SELECTOR.All)
+      .removeClass(`${CSS_CLASS.Highlighted} ${CSS_CLASS.Dimmed} ${CSS_CLASS.Hovered}`);
   }
 
   private _renderGraph(): void {
@@ -221,9 +311,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       elements.push(this._createNodeElement(node));
     }
 
-    const resolveToVisibleNodeId: (rawEndpoint: string) => string | null = (
-      rawEndpoint: string,
-    ): string | null => {
+    const resolveToVisibleNodeId = (rawEndpoint: string): string | null => {
       if (allowedNodeIds.has(rawEndpoint)) return rawEndpoint;
 
       const node: ICodeNode | undefined = nodeById.get(rawEndpoint);
@@ -261,12 +349,12 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       if (resolvedSource && resolvedTarget) {
         if (resolvedSource === resolvedTarget) continue;
 
-        const edgeKey: string = `${resolvedSource}->${resolvedTarget}:${edge.relation}`;
+        const edgeKey: string = `${resolvedSource}${PATH_TEXT.EdgeKeySeparator}${resolvedTarget}${PATH_TEXT.EdgeKeyMetaSeparator}${edge.relation}`;
         if (!addedEdgeKeys.has(edgeKey)) {
           addedEdgeKeys.add(edgeKey);
           elements.push(
             this._createEdgeElement(
-              `edge-${edgeIndex++}`,
+              `${GRAPH_DEFAULTS.EdgeIdPrefix}${edgeIndex++}`,
               resolvedSource,
               resolvedTarget,
               edge.relation,
@@ -282,12 +370,12 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
           elements.push(this._createExternalNodeElement(edge.target));
         }
 
-        const edgeKey: string = `${resolvedSource}->${edge.target}:${edge.relation}`;
+        const edgeKey: string = `${resolvedSource}${PATH_TEXT.EdgeKeySeparator}${edge.target}${PATH_TEXT.EdgeKeyMetaSeparator}${edge.relation}`;
         if (!addedEdgeKeys.has(edgeKey)) {
           addedEdgeKeys.add(edgeKey);
           elements.push(
             this._createEdgeElement(
-              `edge-${edgeIndex++}`,
+              `${GRAPH_DEFAULTS.EdgeIdPrefix}${edgeIndex++}`,
               resolvedSource,
               edge.target,
               edge.relation,
@@ -297,221 +385,197 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
       }
     }
 
+    const dpr: number = Math.max(window.devicePixelRatio || 1, GRAPH_DEFAULTS.PixelRatioMin);
     this._cytoscapeInstance = cytoscape({
       container: this.cyContainer.nativeElement,
       elements,
+      pixelRatio: dpr,
       style: [
         {
           selector: SELECTOR.Node,
           style: {
-            label: 'data(label)',
-            'font-family': 'Inter, system-ui, -apple-system, sans-serif',
+            label: CY_DATA.Label,
+            'font-family': CY_FONT.Mono,
             'font-size': GRAPH_STYLE.NodeFontSize,
             'font-weight': GRAPH_STYLE.NodeFontWeight,
-            color: GraphColor.CanvasText,
-            'text-valign': 'center',
-            'text-halign': 'center',
-            'background-color': GraphColor.CanvasBackground,
+            color: CY_NODE.Text,
+            'text-valign': CY_NODE.ValignCenter,
+            'text-halign': CY_NODE.HalignCenter,
+            'text-max-width': CY_NODE.TextMaxWidth,
+            'text-wrap': CY_NODE.TextWrap,
+            'background-color': GraphColor.FileBackground,
+            'background-opacity': 1,
             'border-width': GRAPH_STYLE.NodeBorderWidth,
             'border-color': GraphColor.NeutralBorder,
-            shape: 'round-rectangle',
-            'corner-radius': '6px',
-            width: 'label',
+            'border-style': CY_NODE.BorderSolid,
+            shape: CY_NODE.Shape,
+            'corner-radius': CY_NODE.CornerRadius,
+            width: CY_NODE.WidthLabel,
             height: GRAPH_STYLE.NodeHeight,
             padding: GRAPH_STYLE.NodePadding,
+            'overlay-opacity': 0,
+            'transition-property': CY_EDGE.NodeTransition,
+            'transition-duration': CY_EDGE.TransitionDurationMs,
           },
         },
-
-        {
-          selector: nodeTypeSelector(NodeType.File),
-          style: {
-            'background-color': GraphColor.FileBackground,
-            'border-color': GraphColor.FileBorder,
-            'font-weight': GRAPH_STYLE.FileFontWeight,
-          },
-        },
-        {
-          selector: nodeRoleSelector(FileRole.Controller),
-          style: {
-            'background-color': GraphColor.ControllerBackground,
-            'border-color': GraphColor.ControllerBorder,
-            color: GraphColor.ControllerText,
-          },
-        },
-        {
-          selector: nodeRoleSelector(FileRole.Service),
-          style: {
-            'background-color': GraphColor.ServiceBackground,
-            'border-color': GraphColor.ServiceBorder,
-            color: GraphColor.ServiceText,
-          },
-        },
-        {
-          selector: nodeRoleSelector(FileRole.Component),
-          style: {
-            'background-color': GraphColor.ComponentBackground,
-            'border-color': GraphColor.ComponentBorder,
-            color: GraphColor.ComponentText,
-          },
-        },
-        {
-          selector: nodeRoleSelector(FileRole.Module),
-          style: {
-            'background-color': GraphColor.ModuleBackground,
-            'border-color': GraphColor.ModuleBorder,
-            color: GraphColor.ModuleText,
-          },
-        },
-
-        {
-          selector: nodeTypeSelector(NodeType.Class),
-          style: {
-            'background-color': GraphColor.ClassBackground,
-            'border-color': GraphColor.ClassBorder,
-            color: GraphColor.ClassText,
-            'border-width': GRAPH_STYLE.ClassBorderWidth,
-          },
-        },
-        {
-          selector: nodeTypeSelector(NodeType.Interface),
-          style: {
-            'background-color': GraphColor.InterfaceBackground,
-            'border-color': GraphColor.InterfaceBorder,
-            color: GraphColor.InterfaceText,
-            'border-style': 'dashed',
-          },
-        },
-        {
-          selector: nodeTypeSelector(NodeType.Function),
-          style: {
-            'background-color': GraphColor.FunctionBackground,
-            'border-color': GraphColor.FunctionBorder,
-            color: GraphColor.FunctionText,
-          },
-        },
-        {
-          selector: nodeTypeSelector(NodeType.Variable),
-          style: {
-            'background-color': GraphColor.VariableBackground,
-            'border-color': GraphColor.VariableBorder,
-            color: GraphColor.VariableText,
-          },
-        },
-        {
-          selector: nodeTypeSelector(EXTERNAL_NODE_TYPE),
-          style: {
-            'background-color': GraphColor.ExternalBackground,
-            'border-color': GraphColor.ExternalBorder,
-            color: GraphColor.ExternalText,
-            'font-style': 'italic',
-          },
-        },
-
+        { selector: nodeTypeSelector(NodeType.File), style: { 'background-color': GraphColor.FileBackground, 'border-color': GraphColor.FileBorder } },
+        { selector: nodeRoleSelector(FileRole.Controller), style: { 'border-color': GraphColor.ControllerText, color: GraphColor.SelectionText } },
+        { selector: nodeRoleSelector(FileRole.Service), style: { 'border-color': GraphColor.ServiceText, color: GraphColor.SelectionText } },
+        { selector: nodeRoleSelector(FileRole.Component), style: { 'border-color': GraphColor.ComponentText, color: GraphColor.SelectionText } },
+        { selector: nodeRoleSelector(FileRole.Module), style: { 'border-color': GraphColor.ModuleText } },
+        { selector: nodeTypeSelector(NodeType.Class), style: { 'border-color': GraphColor.ClassText } },
+        { selector: nodeTypeSelector(NodeType.Interface), style: { 'border-color': GraphColor.InterfaceText, 'border-style': CY_NODE.BorderDashed } },
+        { selector: nodeTypeSelector(NodeType.Function), style: { 'border-color': GraphColor.FunctionText } },
+        { selector: nodeTypeSelector(NodeType.Variable), style: { 'border-color': GraphColor.VariableText } },
+        { selector: nodeTypeSelector(EXTERNAL_NODE_TYPE), style: { 'background-color': GraphColor.ExternalBackground, 'border-color': GraphColor.ExternalBorder, 'border-style': CY_NODE.BorderDotted, color: GraphColor.ExternalText } },
         {
           selector: SELECTOR.Edge,
           style: {
             width: GRAPH_STYLE.EdgeWidth,
-            'line-color': GraphColor.Edge,
-            'target-arrow-color': GraphColor.Edge,
-            'target-arrow-shape': 'triangle',
-            'curve-style': 'bezier',
+            'line-color': CY_EDGE.Color,
+            'line-opacity': GRAPH_STYLE.EdgeOpacity,
+            'target-arrow-color': CY_EDGE.Color,
+            'target-arrow-shape': CY_EDGE.ArrowTriangle,
             'arrow-scale': GRAPH_STYLE.EdgeArrowScale,
-            label: 'data(relation)',
-            'font-size': GRAPH_STYLE.EdgeFontSize,
-            'font-weight': GRAPH_STYLE.EdgeFontWeight,
-            'text-rotation': 'autorotate',
-            'text-margin-y': GRAPH_STYLE.EdgeTextMarginY,
-            color: GraphColor.FileBorder,
-            'text-background-color': GraphColor.CanvasBackground,
-            'text-background-opacity': GRAPH_STYLE.EdgeTextBackgroundOpacity,
-            'text-background-padding': GRAPH_STYLE.EdgeTextBackgroundPadding,
+            label: '',
+            'curve-style': CY_EDGE.CurveTaxi,
+            'taxi-direction': CY_EDGE.TaxiDirection,
+            'taxi-turn': CY_EDGE.TaxiTurn,
+            'line-cap': CY_EDGE.CapSquare,
+            'overlay-opacity': 0,
+            'transition-property': CY_EDGE.EdgeTransition,
+            'transition-duration': CY_EDGE.TransitionDurationMs,
           },
         },
-        {
-          selector: edgeRelationSelector(EdgeRelation.Imports),
-          style: {
-            'line-color': GraphColor.Import,
-            'target-arrow-color': GraphColor.Import,
-            color: GraphColor.ImportText,
-          },
-        },
-        {
-          selector: edgeRelationSelector(EdgeRelation.Extends),
-          style: {
-            'line-color': GraphColor.Extends,
-            'target-arrow-color': GraphColor.Extends,
-            'line-style': 'dashed',
-            color: GraphColor.ExtendsText,
-          },
-        },
-        {
-          selector: edgeRelationSelector(EdgeRelation.Calls),
-          style: {
-            'line-color': GraphColor.Calls,
-            'target-arrow-color': GraphColor.Calls,
-            color: GraphColor.CallsText,
-          },
-        },
-
-        {
-          selector: SELECTOR.SelectedOrHighlightedNode,
-          style: {
-            'border-width': GRAPH_STYLE.SelectedNodeBorderWidth,
-            'border-color': GraphColor.Selection,
-            opacity: GRAPH_STYLE.SelectedNodeOpacity,
-          },
-        },
+        { selector: 'node:active', style: { 'overlay-opacity': 0 } },
+        { selector: SELECTOR.SelectedOrHighlightedNode, style: { 'border-width': GRAPH_STYLE.SelectedNodeBorderWidth, 'border-color': GraphColor.Selection, 'background-color': 'rgba(87, 148, 232, 0.12)', 'background-opacity': 1, 'z-index': CY_EDGE.ZNode, opacity: GRAPH_STYLE.SelectedNodeOpacity, color: GraphColor.SelectionText } },
         {
           selector: SELECTOR.SelectedEdge,
           style: {
-            width: GRAPH_STYLE.SelectedEdgeWidth,
+            width: GRAPH_STYLE.ActiveEdgeWidth,
+            'line-color': CY_EDGE.ActiveColor,
+            'line-opacity': 1,
+            'target-arrow-color': CY_EDGE.ActiveColor,
+            label: CY_DATA.Relation,
+            'font-family': CY_FONT.Mono,
+            'font-size': GRAPH_STYLE.ActiveEdgeFontSize,
+            'font-weight': CY_FONT.WeightActiveLabel,
+            color: CY_EDGE.ActiveColor,
+            'text-rotation': CY_EDGE.TextRotationNone,
+            'text-background-color': GraphColor.CanvasBackground,
+            'text-background-opacity': 1,
+            'text-background-padding': CY_EDGE.TextBgPadding,
+            'text-background-shape': CY_EDGE.TextBgShape,
+            'z-index': CY_EDGE.ZEdge,
             opacity: GRAPH_STYLE.SelectedEdgeOpacity,
           },
         },
-        {
-          selector: SELECTOR.Dimmed,
-          style: {
-            opacity: GRAPH_STYLE.DimmedOpacity,
-          },
-        },
+        { selector: SELECTOR.Dimmed, style: { opacity: GRAPH_STYLE.DimmedOpacity, 'line-opacity': CY_EDGE.OpacityHidden, 'text-opacity': CY_EDGE.TextOpacityDimmed } },
       ],
     });
 
     this._runLayout();
 
-    this._cytoscapeInstance.on('tap', SELECTOR.Node, (event: EventObject): void => {
-      const nodeData: INodeElementData = event.target.data() as INodeElementData;
-      this.selectedElement.set({
-        type: nodeData.type,
-        label: nodeData.label,
-        role: nodeData.fileRole,
-        filePath: nodeData.filePath,
-        relations: this._getNodeRelations(nodeData.id),
+    this._cytoscapeInstance.on(CY_EVENT.Zoom, () => this._zone.run(() => this._syncZoom()));
+    this._syncZoom();
+
+    this._cytoscapeInstance.on(CY_EVENT.Tap, SELECTOR.Node, (event: EventObject): void => {
+      const nodeData = event.target.data() as INodeElementData;
+      this._applySelection(nodeData.id);
+      this._zone.run(() => {
+        this.selectedElement.set({
+          type: nodeData.type,
+          label: nodeData.label,
+          role: nodeData.fileRole,
+          filePath: nodeData.filePath,
+          ...this._deriveFileDisplay(nodeData.filePath, nodeData.label),
+          relations: this._getNodeRelations(nodeData.id),
+          metrics: this._computeMetrics(nodeData.id),
+        });
       });
     });
 
-    this._cytoscapeInstance.on('tap', SELECTOR.Edge, (event: EventObject): void => {
-      const edgeData: IEdgeElementData = event.target.data() as IEdgeElementData;
-      this.selectedElement.set({
-        type: RELATIONSHIP_ELEMENT_TYPE,
-        label: `${edgeData.source}${EDGE_LABEL_SEPARATOR}${edgeData.target}`,
-        role: edgeData.relation,
-        target: edgeData.target,
-        relations: [
-          {
-            relation: edgeData.relation,
-            direction: RelationDirection.Outgoing,
-            connectedNode: edgeData.target,
-          },
-        ],
+    this._cytoscapeInstance.on(CY_EVENT.MouseOver, SELECTOR.Node, (event: EventObject): void => {
+      event.target.addClass(CSS_CLASS.Hovered);
+      event.target.connectedEdges().addClass(CSS_CLASS.Hovered);
+    });
+    this._cytoscapeInstance.on(CY_EVENT.MouseOut, SELECTOR.Node, (event: EventObject): void => {
+      event.target.removeClass(CSS_CLASS.Hovered);
+      event.target.connectedEdges().removeClass(CSS_CLASS.Hovered);
+    });
+    this._cytoscapeInstance.on(CY_EVENT.MouseOver, SELECTOR.Edge, (event: EventObject): void => {
+      event.target.addClass(CSS_CLASS.Hovered);
+    });
+    this._cytoscapeInstance.on(CY_EVENT.MouseOut, SELECTOR.Edge, (event: EventObject): void => {
+      event.target.removeClass(CSS_CLASS.Hovered);
+    });
+
+    this._cytoscapeInstance.on(CY_EVENT.Tap, SELECTOR.Edge, (event: EventObject): void => {
+      const edgeData = event.target.data() as IEdgeElementData;
+      this._cytoscapeInstance!.batch((): void => {
+        const all: CollectionReturnValue = this._cytoscapeInstance!.$(SELECTOR.All);
+        all.removeClass(`${CSS_CLASS.Highlighted} ${CSS_CLASS.Dimmed} ${CSS_CLASS.Hovered}`);
+        all.addClass(CSS_CLASS.Dimmed);
+        event.target.removeClass(CSS_CLASS.Dimmed).addClass(CSS_CLASS.Highlighted);
+        event.target.connectedNodes().removeClass(CSS_CLASS.Dimmed);
+      });
+      this._zone.run(() => {
+        this.selectedElement.set({
+          type: RELATIONSHIP_ELEMENT_TYPE,
+          label: `${edgeData.source}${EDGE_LABEL_SEPARATOR}${edgeData.target}`,
+          role: edgeData.relation,
+          target: edgeData.target,
+          relations: [
+            {
+              relation: edgeData.relation,
+              direction: RelationDirection.Outgoing,
+              connectedNode: edgeData.target,
+              sourceId: edgeData.source,
+              targetId: edgeData.target,
+            },
+          ],
+          metrics: { loc: null, cyclomatic: null, inbound: 1, outbound: 1 },
+        });
       });
     });
 
-    this._cytoscapeInstance.on('tap', (event: EventObject): void => {
+    this._cytoscapeInstance.on(CY_EVENT.Tap, (event: EventObject): void => {
       if (event.target === this._cytoscapeInstance) {
-        this.selectedElement.set(null);
+        this._clearSelectionClasses();
+        this._zone.run(() => this.selectedElement.set(null));
       }
     });
+  }
+
+  private _deriveFileDisplay(
+    filePath: string | undefined,
+    label: string,
+  ): { extension?: string; displayPath?: string } {
+    const path: string = filePath ?? '';
+    const normalized: string = path ? path.replace(PATH_TEXT.WindowsSeparatorPattern, PATH_TEXT.Separator) : '';
+    const name: string = normalized ? normalized.split(PATH_TEXT.Separator).pop() ?? label : label;
+    const dot: number = name.lastIndexOf(PATH_TEXT.ExtensionDot);
+    const extension: string | undefined = dot > 0 ? name.slice(dot) : undefined;
+    const displayPath: string | undefined = normalized || undefined;
+    return { extension, displayPath };
+  }
+
+  private _computeMetrics(nodeId: string): ISelectedElement['metrics'] {
+    let inbound: number = 0;
+    let outbound: number = 0;
+    for (const edge of this.graph.edges) {
+      if (edge.source === nodeId) outbound++;
+      if (edge.target === nodeId) inbound++;
+    }
+    const node: ICodeNode | undefined = this.graph.nodes.find(
+      (graphNode: ICodeNode): boolean => graphNode.id === nodeId,
+    );
+    return {
+      loc: node?.loc ?? null,
+      cyclomatic: node?.cyclomaticComplexity ?? null,
+      inbound,
+      outbound,
+    };
   }
 
   private _createNodeElement(node: ICodeNode): ElementDefinition {
@@ -523,6 +587,8 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
         type: node.type,
         fileRole: node.fileRole,
         filePath: node.filePath,
+        loc: node.loc,
+        cyclomaticComplexity: node.cyclomaticComplexity,
       },
     };
   }
@@ -563,6 +629,8 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
             relation: edge.relation,
             direction: RelationDirection.Outgoing,
             connectedNode: edge.target,
+            sourceId: edge.source,
+            targetId: edge.target,
           },
         ];
       }
@@ -573,6 +641,8 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
             relation: edge.relation,
             direction: RelationDirection.Incoming,
             connectedNode: edge.source,
+            sourceId: edge.source,
+            targetId: edge.target,
           },
         ];
       }

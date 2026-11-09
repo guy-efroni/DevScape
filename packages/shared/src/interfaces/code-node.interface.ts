@@ -10,4 +10,8 @@ export interface ICodeNode {
   fileRole?: FileRole;
   /** Parent container ID (e.g. file node id for compound visual nesting) */
   parent?: string;
+  /** Lines of code (physical LOC of the file or node range) */
+  loc?: number;
+  /** Cyclomatic complexity (computed for functions/classes; file-level may aggregate) */
+  cyclomaticComplexity?: number;
 }

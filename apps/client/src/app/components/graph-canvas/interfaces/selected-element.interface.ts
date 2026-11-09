@@ -7,4 +7,12 @@ export interface ISelectedElement {
   filePath?: string;
   target?: string;
   relations: ISelectedRelation[];
+  extension?: string;
+  displayPath?: string;
+  metrics?: {
+    loc: number | null;
+    cyclomatic: number | null;
+    inbound: number;
+    outbound: number;
+  };
 }

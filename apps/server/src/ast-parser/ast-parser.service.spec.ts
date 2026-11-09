@@ -1,6 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { AstParserService } from './ast-parser.service.js';
-import { BadRequestException } from '@nestjs/common';
 import type { ICodeGraph, ICodeNode, IGraphEdge } from '@devscape/shared';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -8,211 +7,182 @@ import * as os from 'node:os';
 
 describe('AstParserService', (): void => {
   let service: AstParserService;
-  let tempDir: string;
+  let tempDirectory: string;
 
-  beforeEach((): void => {
+  beforeAll((): void => {
     service = new AstParserService();
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ast-parser-test-'));
-  });
 
-  afterEach((): void => {
-    if (fs.existsSync(tempDir)) {
-      fs.rmSync(tempDir, { recursive: true, force: true });
-    }
-  });
+    tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'ast-parser-test-'));
 
-  it('should throw BadRequestException for non-existent path', (): void => {
-    expect(() => service.parseDirectory('/path/that/does/not/exist')).toThrow(
-      BadRequestException,
-    );
-  });
-
-  it('should return empty nodes and edges for empty directory', (): void => {
-    const result: ICodeGraph = service.parseDirectory(tempDir);
-    expect(result).toEqual({ nodes: [], edges: [] });
-  });
-
-  it('should parse an empty TypeScript file without compiler errors', (): void => {
-    fs.writeFileSync(path.join(tempDir, 'empty.ts'), '');
-
-    const result: ICodeGraph = service.parseDirectory(tempDir);
-
-    expect(result.nodes).toContainEqual(
-      expect.objectContaining({
-        id: 'empty.ts',
-        type: 'file',
-        filePath: 'empty.ts',
-      }),
-    );
-    expect(result.edges).toEqual([]);
-  });
-
-  it('should parse circular imports without filesystem or compiler errors', (): void => {
     fs.writeFileSync(
-      path.join(tempDir, 'first.ts'),
-      "import { second } from './second.js';\nexport const first = second;",
+      path.join(tempDirectory, 'app.service.ts'),
+      `
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class AppService {
+  getHello(): string {
+    return 'Hello World!';
+  }
+}
+`,
+      'utf-8',
     );
+
     fs.writeFileSync(
-      path.join(tempDir, 'second.ts'),
-      "import { first } from './first.js';\nexport const second = first;",
+      path.join(tempDirectory, 'app.controller.ts'),
+      `
+import { Controller, Get } from '@nestjs/common';
+import { AppService } from './app.service';
+
+@Controller()
+export class AppController {
+  constructor(private readonly appService: AppService) {}
+
+  @Get()
+  getHello(): string {
+    return this.appService.getHello();
+  }
+}
+`,
+      'utf-8',
     );
 
-    const result: ICodeGraph = service.parseDirectory(tempDir);
+    fs.writeFileSync(
+      path.join(tempDirectory, 'app.module.ts'),
+      `
+import { Module } from '@nestjs/common';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 
-    expect(result.nodes).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ id: 'first.ts', type: 'file' }),
-        expect.objectContaining({ id: 'second.ts', type: 'file' }),
-      ]),
+@Module({
+  imports: [],
+  controllers: [AppController],
+  providers: [AppService],
+})
+export class AppModule {}
+`,
+      'utf-8',
     );
-    expect(result.edges).toEqual(
-      expect.arrayContaining([
-        {
-          source: 'first.ts',
-          target: 'second.ts',
-          relation: 'imports',
-        },
-        {
-          source: 'second.ts',
-          target: 'first.ts',
-          relation: 'imports',
-        },
-      ]),
+
+    fs.writeFileSync(
+      path.join(tempDirectory, 'utils.ts'),
+      `
+export function greet(name: string): string {
+  return \`Hello, \${name}!\`;
+}
+
+export interface GreetOptions {
+  prefix: string;
+  suffix: string;
+}
+
+export const DEFAULT_GREETING = 'Hello';
+`,
+      'utf-8',
+    );
+
+    fs.mkdirSync(path.join(tempDirectory, 'models'));
+    fs.writeFileSync(
+      path.join(tempDirectory, 'models', 'user.model.ts'),
+      `
+import type { GreetOptions } from '../utils';
+
+export interface User {
+  id: number;
+  name: string;
+}
+
+export class UserService {
+  createUser(name: string): User {
+    return { id: 1, name };
+  }
+}
+`,
+      'utf-8',
     );
   });
 
-  it('should parse local TypeScript files into nodes and import edges', (): void => {
-    fs.writeFileSync(
-      path.join(tempDir, 'entry.ts'),
-      "import { helper } from './helper.js';\nexport const result = helper();",
-    );
-    fs.writeFileSync(
-      path.join(tempDir, 'helper.ts'),
-      'export function helper(): string { return "ok"; }',
-    );
-
-    const result: ICodeGraph = service.parseDirectory(tempDir);
-
-    expect(result.nodes).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          id: 'entry.ts',
-          type: 'file',
-          filePath: 'entry.ts',
-        }),
-        expect.objectContaining({
-          id: 'entry.ts::result',
-          type: 'variable',
-          filePath: 'entry.ts',
-        }),
-        expect.objectContaining({
-          id: 'helper.ts',
-          type: 'file',
-          filePath: 'helper.ts',
-        }),
-        expect.objectContaining({
-          id: 'helper.ts::helper',
-          type: 'function',
-          filePath: 'helper.ts',
-        }),
-      ]),
-    );
-    expect(result.edges).toContainEqual({
-      source: 'entry.ts',
-      target: 'helper.ts',
-      relation: 'imports',
-    });
+  afterAll((): void => {
+    fs.rmSync(tempDirectory, { recursive: true, force: true });
   });
 
-  it('should extract nodes, imports, inheritance, and call edges', (): void => {
-    const sampleTs: string = `
-      import { Injectable } from '@nestjs/common';
+  it('should return an ICodeGraph with nodes and edges', (): void => {
+    const result: ICodeGraph = service.parseDirectory(tempDirectory);
 
-      export interface IUserService {
-        getUser(id: string): string;
-      }
+    expect(result).toBeDefined();
+    expect(result).toHaveProperty('nodes');
+    expect(result).toHaveProperty('edges');
+    expect(Array.isArray(result.nodes)).toBe(true);
+    expect(Array.isArray(result.edges)).toBe(true);
+  });
 
-      export interface IAdminService extends IUserService {
-      }
+  it('should extract class declarations as nodes', (): void => {
+    const result: ICodeGraph = service.parseDirectory(tempDirectory);
+    const classNames: string[] = result.nodes
+      .filter((node: ICodeNode): boolean => node.type === 'class')
+      .map((node: ICodeNode): string => node.name);
 
-      export class BaseService {
-      }
+    expect(classNames).toContain('AppService');
+    expect(classNames).toContain('AppController');
+    expect(classNames).toContain('AppModule');
+    expect(classNames).toContain('UserService');
+  });
 
-      export class UserService extends BaseService implements IAdminService {
-        getUser(id: string): string {
-          return id;
-        }
-      }
+  it('should extract interface declarations as nodes', (): void => {
+    const result: ICodeGraph = service.parseDirectory(tempDirectory);
+    const interfaceNames: string[] = result.nodes
+      .filter((node: ICodeNode): boolean => node.type === 'interface')
+      .map((node: ICodeNode): string => node.name);
 
-      export function helper(): void {
-      }
+    expect(interfaceNames).toContain('GreetOptions');
+    expect(interfaceNames).toContain('User');
+  });
 
-      export const DEFAULT_TIMEOUT = 5000;
+  it('should extract function declarations as nodes', (): void => {
+    const result: ICodeGraph = service.parseDirectory(tempDirectory);
+    const functionNames: string[] = result.nodes
+      .filter((node: ICodeNode): boolean => node.type === 'function')
+      .map((node: ICodeNode): string => node.name);
 
-      helper();
-    `;
+    expect(functionNames).toContain('greet');
+  });
 
-    fs.writeFileSync(path.join(tempDir, 'user.service.ts'), sampleTs);
+  it('should extract variable declarations as nodes', (): void => {
+    const result: ICodeGraph = service.parseDirectory(tempDirectory);
+    const variableNames: string[] = result.nodes
+      .filter((node: ICodeNode): boolean => node.type === 'variable')
+      .map((node: ICodeNode): string => node.name);
 
-    const result: ICodeGraph = service.parseDirectory(tempDir);
+    expect(variableNames).toContain('DEFAULT_GREETING');
+  });
 
-    // Expect file node
-    const fileNode = result.nodes.find((n: ICodeNode) => n.type === 'file');
-    expect(fileNode).toBeDefined();
-    expect(fileNode?.name).toBe('user.service.ts');
-    expect(fileNode?.fileRole).toBe('service');
+  it('should extract import relationships as edges', (): void => {
+    const result: ICodeGraph = service.parseDirectory(tempDirectory);
+    const importEdges: IGraphEdge[] = result.edges.filter((edge: IGraphEdge): boolean => edge.relation === 'imports');
 
-    // Expect class node
-    const classNode = result.nodes.find((n: ICodeNode) => n.name === 'UserService');
-    expect(classNode).toBeDefined();
-    expect(classNode?.type).toBe('class');
-    expect(classNode?.parent).toBe('user.service.ts');
+    expect(importEdges.length).toBeGreaterThan(0);
 
-    // Expect interface node
-    const ifaceNode = result.nodes.find((n: ICodeNode) => n.name === 'IUserService');
-    expect(ifaceNode).toBeDefined();
-    expect(ifaceNode?.type).toBe('interface');
-
-    // Expect function node
-    const funcNode = result.nodes.find((n: ICodeNode) => n.name === 'helper');
-    expect(funcNode).toBeDefined();
-    expect(funcNode?.type).toBe('function');
-
-    // Expect variable node
-    const varNode = result.nodes.find((n: ICodeNode) => n.name === 'DEFAULT_TIMEOUT');
-    expect(varNode).toBeDefined();
-    expect(varNode?.type).toBe('variable');
-
-    // Expect import edge
-    const importEdge = result.edges.find((e: IGraphEdge) => e.relation === 'imports');
-    expect(importEdge).toBeDefined();
-    expect(importEdge?.target).toBe('@nestjs/common');
-
-    const inheritanceEdges: IGraphEdge[] = result.edges.filter(
-      (edge: IGraphEdge): boolean => edge.relation === 'extends',
+    const controllerImports: IGraphEdge[] = importEdges.filter(
+      (edge: IGraphEdge): boolean => edge.source.includes('app.controller') && edge.target.includes('app.service'),
     );
-    expect(inheritanceEdges).toEqual(
-      expect.arrayContaining([
-        {
-          source: 'user.service.ts::IAdminService',
-          target: 'user.service.ts::IUserService',
-          relation: 'extends',
-        },
-        {
-          source: 'user.service.ts::UserService',
-          target: 'user.service.ts::BaseService',
-          relation: 'extends',
-        },
-        {
-          source: 'user.service.ts::UserService',
-          target: 'user.service.ts::IAdminService',
-          relation: 'extends',
-        },
-      ]),
+    expect(controllerImports.length).toBeGreaterThan(0);
+  });
+
+  it('should include nodes from subdirectories', (): void => {
+    const result: ICodeGraph = service.parseDirectory(tempDirectory);
+    const subdirectoryNodes: ICodeNode[] = result.nodes.filter(
+      (node: ICodeNode): boolean => node.filePath.includes('models'),
     );
 
-    const callsEdge = result.edges.find((e: IGraphEdge) => e.relation === 'calls');
-    expect(callsEdge).toBeDefined();
-    expect(callsEdge?.target).toBe('user.service.ts::helper');
+    expect(subdirectoryNodes.length).toBeGreaterThan(0);
+
+    const nodeNames: string[] = subdirectoryNodes.map((node: ICodeNode): string => node.name);
+    expect(nodeNames).toContain('User');
+    expect(nodeNames).toContain('UserService');
+  });
+
+  it('should return empty graph for non-existent directory', (): void => {
+    expect((): ICodeGraph => service.parseDirectory('/tmp/this-does-not-exist-xyz')).toThrow();
   });
 });

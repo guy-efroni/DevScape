@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import type { ICodeGraph } from '@devscape/shared';
 import { CodeGraphService } from './services/code-graph.service';
 import { GraphResultsComponent } from './components/graph-results/graph-results.component';
-import { UNKNOWN_ERROR_MESSAGE } from './app.constants';
+import { APP_UI, AppStatus, UNKNOWN_ERROR_MESSAGE } from './app.constants';
 
 @Component({
   imports: [FormsModule, GraphResultsComponent],
@@ -18,20 +18,11 @@ export class App {
   protected readonly graph: WritableSignal<ICodeGraph | null> = signal<ICodeGraph | null>(null);
   protected readonly loading: WritableSignal<boolean> = signal<boolean>(false);
   protected readonly error: WritableSignal<string | null> = signal<string | null>(null);
-
-  protected readonly presets: ReadonlyArray<{ label: string; path: string }> = [
-    { label: 'Server Source', path: 'apps/server/src' },
-    { label: 'Shared Interfaces', path: 'packages/shared/src' },
-    { label: 'Client App', path: 'apps/client/src/app' },
-  ];
-
-  protected selectPreset(presetPath: string): void {
-    this.directoryPath.set(presetPath);
-    this.onSubmit();
-  }
+  protected readonly ui = APP_UI;
+  protected readonly status = AppStatus;
 
   protected onSubmit(): void {
-    const dirPath = this.directoryPath().trim();
+    const dirPath: string = this.directoryPath().trim();
     if (!dirPath) return;
 
     this.loading.set(true);
@@ -39,7 +30,7 @@ export class App {
     this.graph.set(null);
 
     this._codeGraphService.parse(dirPath).subscribe({
-      next: (result) => {
+      next: (result: ICodeGraph) => {
         this.graph.set(result);
         this.loading.set(false);
       },

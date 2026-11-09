@@ -1,10 +1,10 @@
-import { ValidationPipe } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 import { ALLOWED_CORS_METHODS, CLIENT_ORIGIN, DEFAULT_PORT } from './app.constants.js';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  const app: INestApplication = await NestFactory.create(AppModule);
 
   app.useGlobalPipes(
     new ValidationPipe({
