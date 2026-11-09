@@ -25,14 +25,21 @@ jobs:
         with:
           node-version: 20.x
           cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            apps/server/package-lock.json
+            apps/client/package-lock.json
+            packages/shared/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm --prefix apps/server ci
+          npm --prefix apps/client ci
 
       - name: Build and test NestJS backend
         run: |
-          npm run build --prefix apps/api
-          npm test --prefix apps/api
+          npm run build --prefix apps/server
+          npm test --prefix apps/server
 
       - name: Build and test Angular client (headless)
         run: |
