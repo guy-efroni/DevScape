@@ -79,7 +79,7 @@ export class GraphCanvasComponent implements OnChanges, OnDestroy {
   @Input({ required: true }) public graph!: ICodeGraph;
   @ViewChild('cyContainer', { static: true }) public cyContainer!: ElementRef<HTMLDivElement>;
 
-  private readonly _zone = inject(NgZone);
+  private readonly _zone: NgZone = inject(NgZone);
   private _cytoscapeInstance: Core | null = null;
 
   public readonly viewFilter: WritableSignal<ViewFilterType> = signal<ViewFilterType>(

@@ -63,7 +63,7 @@ export class AstParserService {
     });
 
     // Map of all known relative file paths in this project
-    const knownFiles = new Set<string>(
+    const knownFiles: Set<string> = new Set<string>(
       sourceFiles.map((sourceFile: ts.SourceFile): string => this._toRelativePath(resolvedPath, sourceFile.fileName)),
     );
 
@@ -157,10 +157,6 @@ export class AstParserService {
 
     return detectedFromAst ?? FILE_ROLES.Generic;
   }
-
-  // ──────────────────────────────────────────────
-  //  File collection
-  // ──────────────────────────────────────────────
 
   private _collectTsFiles(directoryPath: string): string[] {
     const results: string[] = [];
