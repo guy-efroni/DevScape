@@ -24,6 +24,9 @@ describe('App', (): void => {
     const fixture: ComponentFixture<App> = TestBed.createComponent(App);
     await fixture.whenStable();
     const compiled: HTMLElement = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('DevScape');
+    const heading: Element | null = compiled.querySelector('.wordmark, h1');
+
+    expect(heading).not.toBeNull();
+    expect(heading?.textContent ?? '').toContain('DevScape');
   });
 });
