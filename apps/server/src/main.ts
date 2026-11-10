@@ -6,6 +6,8 @@ import { ALLOWED_CORS_METHODS, CLIENT_ORIGIN, DEFAULT_PORT } from './app.constan
 async function bootstrap(): Promise<void> {
   const app: INestApplication = await NestFactory.create(AppModule);
 
+  app.setGlobalPrefix('api');
+
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,

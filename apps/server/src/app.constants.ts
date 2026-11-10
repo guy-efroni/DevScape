@@ -1,6 +1,3 @@
-/** Route prefix for the JSON API. */
-export const API_ROUTE_PREFIX = 'api';
-
 /** Port the HTTP server listens on when `PORT` is not set. */
 export const DEFAULT_PORT = 3000;
 
