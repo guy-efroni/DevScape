@@ -9,7 +9,23 @@ async function bootstrap(): Promise<void> {
   app.setGlobalPrefix('api');
 
   app.enableCors({
-    origin: ['http://localhost:4200', 'https://<your-frontend>.onrender.com'],
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+      // Allow requests with no origin (like Postman or server-to-server)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      // Automatically allow localhost and any render.com subdomain
+      if (
+        origin.startsWith('http://localhost:') ||
+        origin.endsWith('.onrender.com')
+      ) {
+        return callback(null, true);
+      }
+
+      // Reject anything else
+      return callback(new Error('Blocked by CORS policy'));
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true,
   });
@@ -25,4 +41,4 @@ async function bootstrap(): Promise<void> {
   const port: number = Number(process.env.PORT) || DEFAULT_PORT;
   await app.listen(port, '0.0.0.0');
 }
-await bootstrap();
+bootstrap();
