@@ -1,16 +1,7 @@
-const resolveApiOrigin = (): string => {
-  if (typeof window !== 'undefined') {
-    const hostname: string = window.location.hostname;
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return 'http://localhost:3000';
-    }
-  }
-
-  return 'https://<your-backend-name>.onrender.com';
-};
+import { environment } from '../environments/environment';
 
 /** Base URL of the DevScape API server. */
-export const API_ORIGIN: string = resolveApiOrigin();
+export const API_BASE_URL: string = environment.apiUrl;
 
 /** Endpoint that parses a directory into a code graph. */
 export const API_PARSE_PATH = '/api/parse';
